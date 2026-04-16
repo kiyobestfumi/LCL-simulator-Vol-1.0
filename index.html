@@ -145,7 +145,10 @@ table.mt tbody tr:hover td{background:var(--sur2)}
 .divider{border:none;border-top:1px solid var(--brd);margin:.6rem 0}
 .tag{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px}
 .tag-t{background:var(--blue-bg);color:var(--blue)}.tag-k{background:var(--red-bg);color:var(--red)}.tag-o{background:var(--sur2);color:var(--tx2)}
-.carrier-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px;letter-spacing:.04em}
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.cntr-input{width:52px;font-family:var(--mono);font-size:14px;font-weight:600;padding:5px 6px;border:1.5px solid var(--brd2);border-radius:6px;text-align:center;background:var(--sur);}
+.cntr-input:focus{outline:none;border-color:var(--blue);background:#fff;}
 .cb-one{background:#E8F0FF;color:#1A3A6B}.cb-hmm{background:#FFF0E8;color:#8B3A1A}
 .sec-box{border:1px solid var(--brd);border-radius:var(--r);padding:.7rem;margin-bottom:.6rem}
 .sec-box.tokyo-box{border-color:var(--blue-brd);background:var(--blue-bg)}
@@ -160,7 +163,7 @@ table.mt tbody tr:hover td{background:var(--sur2)}
   <div class="dot spin" id="dot"></div>
   <h1>混載収益シミュレーター</h1>
   <span id="conn-lbl" style="font-family:var(--mono);font-size:10px;color:#aaa">接続中...</span>
-  <span class="ver">v8.0 — DESTINATION・コンテナ選択対応</span>
+  <span class="ver">v8.5 — CDN修正・UMDビルド</span>
 </header>
 
 <nav>
@@ -181,10 +184,16 @@ table.mt tbody tr:hover td{background:var(--sur2)}
           <option value="">-- 選択 --</option>
         </select>
       </div>
+      <div class="f"><label>AGENT（T/S手配）</label>
+        <select id="sim-agent" onchange="onAgentChange()" style="padding:6px 9px">
+          <option value="">-- なし --</option>
+        </select>
+      </div>
       <div class="f"><label>為替レート USD/JPY</label><input type="text" id="sim-fx" value="155" oninput="fmtI(this);calc()"></div>
       <div class="f"><label>EUR/JPY（HMM EES用）</label><input type="text" id="sim-eur" value="165" oninput="fmtI(this);calc()"></div>
     </div>
     <div id="carrier-info" style="margin-top:.6rem"></div>
+    <div id="agent-info" style="margin-top:.4rem"></div>
   </div>
 
   <!-- VANNING / ラッシング -->
@@ -318,6 +327,87 @@ table.mt tbody tr:hover td{background:var(--sur2)}
     <button class="add-row-btn" onclick="addRow()">＋ 荷主を追加</button>
   </div>
 
+  <!-- コンテナ構成 手動確定パネル -->
+  <div class="card" id="cntr-panel">
+    <div class="ct">
+      コンテナ構成の確定
+      <span style="font-size:10px;color:var(--tx3);font-weight:400;margin-left:.3rem">
+        自動計算値を参考に、本数を手動で調整して計算できます
+      </span>
+      <button class="btn btn-sm" onclick="autoFillCntr()" style="margin-left:auto;font-size:11px">
+        自動計算値を反映
+      </button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+      <!-- パターンA -->
+      <div style="border:1px solid var(--brd);border-radius:var(--r);padding:.75rem">
+        <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.06em">
+          パターンA — 拠点別仕立て
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <!-- 東京 -->
+          <div style="background:var(--blue-bg);border-radius:var(--r);padding:.6rem .8rem">
+            <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.4rem">東京</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">20FT</label>
+              <input type="number" id="ca-t20" min="0" value="0" onchange="calc()"
+                style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">40HC</label>
+              <input type="number" id="ca-t40" min="0" value="0" onchange="calc()"
+                style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
+          </div>
+          <!-- 神戸 -->
+          <div style="background:var(--red-bg);border-radius:var(--r);padding:.6rem .8rem">
+            <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:.4rem">神戸</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">20FT</label>
+              <input type="number" id="ca-k20" min="0" value="0" onchange="calc()"
+                style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">40HC</label>
+              <input type="number" id="ca-k40" min="0" value="0" onchange="calc()"
+                style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
+          </div>
+        </div>
+        <div id="ca-note" style="font-size:10px;color:var(--tx3);margin-top:.5rem"></div>
+      </div>
+
+      <!-- パターンB -->
+      <div style="border:1px solid var(--brd);border-radius:var(--r);padding:.75rem">
+        <div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.06em">
+          パターンB — 神戸→東京 OLT → 合算仕立て
+        </div>
+        <div style="background:var(--acc-bg);border-radius:var(--r);padding:.6rem .8rem">
+          <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:.4rem">東京（合算）</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <label style="font-size:11px;color:var(--tx2);min-width:32px">20FT</label>
+            <input type="number" id="cb-20" min="0" value="0" onchange="calc()"
+              style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+            <span style="font-size:11px;color:var(--tx2)">本</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:11px;color:var(--tx2);min-width:32px">40HC</label>
+            <input type="number" id="cb-40" min="0" value="0" onchange="calc()"
+              style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+            <span style="font-size:11px;color:var(--tx2)">本</span>
+          </div>
+        </div>
+        <div id="cb-note" style="font-size:10px;color:var(--tx3);margin-top:.5rem"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- サマリーバー -->
   <div class="sum-bar" id="sum-bar" style="display:none">
     <div class="sc"><div class="sl">東京 物量</div><div class="sv" id="sv-t">-</div></div>
@@ -327,6 +417,7 @@ table.mt tbody tr:hover td{background:var(--sur2)}
     <div class="sc"><div class="sl">REFUND対象物量</div><div class="sv" id="sv-ref-vol">-</div></div>
     <div class="sc"><div class="sl">総売上</div><div class="sv" id="sv-rev">-</div></div>
     <div class="sc hi-amber"><div class="sl">REFUND（当社利益）</div><div class="sv" id="sv-ref">-</div></div>
+    <div class="sc hi-purple" id="sv-agent-wrap" style="display:none"><div class="sl">AGENTコスト</div><div class="sv" id="sv-agent">-</div></div>
     <div class="sc"><div class="sl">パターンA 利益</div><div class="sv" id="sv-pa">-</div></div>
     <div class="sc"><div class="sl">パターンB 利益</div><div class="sv" id="sv-pb">-</div></div>
   </div>
@@ -388,9 +479,15 @@ table.mt tbody tr:hover td{background:var(--sur2)}
 <div id="page-cost" class="page">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
     <h2 style="font-size:16px;font-weight:500">コストマスター</h2>
-    <button class="btn btn-a" onclick="openKM()">＋ 船社を追加</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-a" onclick="openKM()">＋ 船社を追加</button>
+      <button class="btn" style="background:var(--purple-bg);border-color:var(--purple-brd);color:var(--purple)" onclick="openAM()">＋ AGENTを追加</button>
+    </div>
   </div>
+
+  <!-- 船社テーブル -->
   <div class="card">
+    <div class="ct">船社コストマスター</div>
     <div class="tw">
       <table class="mt">
         <thead><tr>
@@ -408,7 +505,28 @@ table.mt tbody tr:hover td{background:var(--sur2)}
           <th class="gh">段積不可<br>(¥/件)</th><th class="gh">パレタイズ<br>(¥/件)</th>
           <th></th>
         </tr></thead>
-        <tbody id="ktb"><tr><td colspan="23" class="loading">読み込み中...</td></tr></tbody>
+        <tbody id="ktb"><tr><td colspan="26" class="loading">読み込み中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- AGENTテーブル -->
+  <div class="card">
+    <div class="ct" style="color:var(--purple)">AGENT コストマスター
+      <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.5rem">T/S手配代理店の仕向地別レート・手数料を登録</span>
+    </div>
+    <div class="tw">
+      <table class="mt">
+        <thead><tr>
+          <th>AGENT名</th>
+          <th class="th">仕向地</th>
+          <th class="th">T/Sコスト<br>USD/m³</th>
+          <th class="th">固定費<br>USD/BL</th>
+          <th class="gh">取扱料<br>JPY/件</th>
+          <th>メモ</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="atb"><tr><td colspan="7" class="loading">読み込み中...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -555,6 +673,48 @@ table.mt tbody tr:hover td{background:var(--sur2)}
   </div>
 </div>
 
+<!-- ===== AGENT MODAL ===== -->
+<div class="modal-bg" id="am-modal">
+  <div class="modal-box" style="max-width:600px">
+    <h2 style="font-size:15px;font-weight:500;margin-bottom:.4rem" id="am-title">AGENTを追加</h2>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:1rem">仕向地ごとにレートを登録してください。同じAGENT名で複数仕向地を登録できます。</p>
+    <input type="hidden" id="am-id">
+    <div class="g2" style="margin-bottom:.6rem">
+      <div class="f"><label>AGENT名 *</label><input type="text" id="am-name" placeholder="例: SCL, MACS Shipping"></div>
+      <div class="f"><label>仕向地</label>
+        <select id="am-dest" style="padding:6px 9px;border:1px solid var(--purple-brd);border-radius:var(--r);background:var(--purple-bg);font-size:13px;color:var(--purple)">
+          <option value="ALL">ALL（全仕向地共通）</option>
+        </select>
+      </div>
+    </div>
+    <div class="g3" style="margin-bottom:.6rem">
+      <div class="f" style="background:var(--purple-bg);border:1px solid var(--purple-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--purple);font-weight:700">T/Sコスト (USD/m³)</label>
+        <input type="text" id="am-ts-cost" value="0" oninput="fmtI(this)" style="border-color:var(--purple-brd);margin-top:4px;font-family:var(--mono)">
+        <span style="font-size:10px;color:var(--purple);margin-top:2px">物量 × このレート = T/Sコスト</span>
+      </div>
+      <div class="f" style="background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--amber);font-weight:700">固定費 (USD/BL)</label>
+        <input type="text" id="am-fixed" value="0" oninput="fmtI(this)" style="border-color:var(--amber-brd);margin-top:4px;font-family:var(--mono)">
+        <span style="font-size:10px;color:var(--amber);margin-top:2px">BL単位の固定費用</span>
+      </div>
+      <div class="f" style="background:var(--green-bg);border:1px solid var(--green-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--green);font-weight:700">取扱料 (JPY/件)</label>
+        <input type="text" id="am-handling" value="0" oninput="fmtI(this)" style="border-color:var(--green-brd);margin-top:4px;font-family:var(--mono)">
+        <span style="font-size:10px;color:var(--green);margin-top:2px">JPY固定費用</span>
+      </div>
+    </div>
+    <div class="f" style="margin-bottom:1.2rem">
+      <label>メモ</label>
+      <input type="text" id="am-memo" placeholder="備考など">
+    </div>
+    <div class="brow">
+      <button class="btn" onclick="closeAM()">キャンセル</button>
+      <button class="btn" style="background:var(--purple);color:#fff;border-color:var(--purple)" onclick="saveAgent()">保存</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -562,12 +722,17 @@ const SUPABASE_URL      = 'https://rmrbdpurjlwgodrpphjp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtcmJkcHVyamx3Z29kcnBwaGpwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2MzczMDQsImV4cCI6MjA5MTIxMzMwNH0.gk8nKhb_nZ-_kBcQ9Hm_pXCoLB3Kx7ydL_om1nI9eDc';
 </script>
 
-<script type="module">
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<!-- Supabase JS: unpkg UMD ビルド（モジュール不要・全ブラウザ対応） -->
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<script>
+// UMDビルドでは window.supabase.createClient として利用可能
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let customers=[],allCosts=[],carriers=[],sel20=null,sel40=null,rowSeq=0;
-let tsRates=[];  // ts_rates テーブル
+let tsRates=[];     // ts_rates テーブル
+let agentRates=[];  // agent_rates テーブル
+let selAgent=null;  // 選択中AGENTレコード（単一）
 
 const $=id=>document.getElementById(id);
 function nv(v){if(v==null)return 0;return parseFloat(String(v).replace(/,/g,''))||0;}
@@ -590,26 +755,56 @@ window.showPage=id=>{
   const idx={sim:0,cust:1,cost:2}[id];
   if(idx!==undefined)document.querySelectorAll('.nb')[idx].classList.add('active');
   if(id==='cust')renderCustTable();
-  if(id==='cost')renderCostTable();
+  if(id==='cost'){renderCostTable();renderAgentTable();}
 };
 
 async function loadAll(){
   $('dot').className='dot spin';$('conn-lbl').textContent='接続中...';
-  const[{data:cData,error:cErr},{data:kData,error:kErr},{data:tData,error:tErr}]=await Promise.all([
-    db.from('customers').select('*').order('name'),
-    db.from('cost_master').select('*').order('carrier').order('container_type'),
-    db.from('ts_rates').select('*').order('destination'),
-  ]);
-  if(cErr||kErr||tErr){$('dot').className='dot err';$('conn-lbl').textContent='エラー: '+((cErr||kErr||tErr)?.message);return;}
-  customers=cData||[];allCosts=kData||[];tsRates=tData||[];
+  try {
+    // 個別にエラーを捕捉して原因を特定
+    const results = await Promise.all([
+      db.from('customers').select('*').order('name'),
+      db.from('cost_master').select('*').order('carrier').order('container_type'),
+      db.from('ts_rates').select('*').order('destination'),
+      db.from('agent_rates').select('*').order('agent_name').order('destination'),
+    ]);
+    const names=['customers','cost_master','ts_rates','agent_rates'];
+    for(let i=0;i<results.length;i++){
+      if(results[i].error){
+        $('dot').className='dot err';
+        $('conn-lbl').textContent=`エラー [${names[i]}]: ${results[i].error.message}`;
+        return;
+      }
+    }
+    customers  = results[0].data||[];
+    allCosts   = results[1].data||[];
+    tsRates    = results[2].data||[];
+    agentRates = results[3].data||[];
+  } catch(e) {
+    $('dot').className='dot err';
+    $('conn-lbl').textContent='接続エラー: '+e.message;
+    return;
+  }
+
   carriers=[...new Set(allCosts.map(r=>r.carrier))];
-  $('dot').className='dot ok';$('conn-lbl').textContent=`接続済 — 顧客${customers.length}件 / 船社${carriers.length}社`;
+  const agentNames=[...new Set(agentRates.map(r=>r.agent_name))];
+  $('dot').className='dot ok';
+  $('conn-lbl').textContent=`接続済 — 顧客${customers.length}件 / 船社${carriers.length}社 / AGENT ${agentNames.length}社 / 仕向地${tsRates.length}港`;
 
   const prevC=$('sim-carrier').value;
   $('sim-carrier').innerHTML='<option value="">-- 船社を選択 --</option>';
   carriers.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;$('sim-carrier').appendChild(o);});
   if(prevC){$('sim-carrier').value=prevC;onCarrierChange();}
   else if(carriers.length){$('sim-carrier').value=carriers[0];onCarrierChange();}
+
+  // AGENTセレクト更新
+  const prevA=$('sim-agent').value;
+  $('sim-agent').innerHTML='<option value="">-- なし --</option>';
+  agentNames.forEach(n=>{
+    const o=document.createElement('option');o.value=n;o.textContent=n;$('sim-agent').appendChild(o);
+  });
+  if(prevA&&agentNames.includes(prevA)){$('sim-agent').value=prevA;onAgentChange();}
+  else selAgent=null;
 
   document.querySelectorAll('.row-cust-sel').forEach(sel=>{
     const cur=sel.value;
@@ -620,7 +815,25 @@ async function loadAll(){
   calc();
 }
 
-window.onCarrierChange=function(){
+// AGENT選択変更
+window.onAgentChange=function(){
+  const name=$('sim-agent').value;
+  if(!name){ selAgent=null; $('agent-info').innerHTML=''; calc(); return; }
+  // 同名の全仕向地レートを取得
+  const rates=agentRates.filter(r=>r.agent_name===name);
+  selAgent={name, rates};
+  // 情報表示
+  const items=rates.map(r=>{
+    const dest=r.destination==='ALL'?'全仕向地':r.destination;
+    const parts=[];
+    if(nv(r.ts_cost_usd)) parts.push(`T/S $${fmt(r.ts_cost_usd,2)}/m³`);
+    if(nv(r.fixed_usd))   parts.push(`固定 $${fmt(r.fixed_usd,2)}/BL`);
+    if(nv(r.handling_jpy)) parts.push(`取扱 ¥${fmt(r.handling_jpy)}`);
+    return `<span style="font-size:11px;background:var(--purple-bg);color:var(--purple);padding:2px 8px;border-radius:4px;margin-right:4px">${dest}: ${parts.join(' / ')||'費用なし'}</span>`;
+  }).join('');
+  $('agent-info').innerHTML=`<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:10px;font-weight:700;color:var(--purple);margin-right:4px">AGENT: ${name}</span>${items}</div>`;
+  calc();
+};
   const carrier=$('sim-carrier').value;
   sel20=allCosts.find(r=>r.carrier===carrier&&r.container_type==='20FT')||null;
   sel40=allCosts.find(r=>r.carrier===carrier&&r.container_type==='40HC')||null;
@@ -656,7 +869,33 @@ window.onCarrierChange=function(){
   calc();
 };
 
-// ── OLT トラック計算（チェックボックス選択方式） ──────────────
+// ── コンテナ本数を自動計算値で埋める ─────────────────────────
+window.autoFillCntr=function(){
+  const rows=getRows();
+  const cap20=nv(sel20?.cap_m3)||25;
+  const cap40=nv(sel40?.cap_m3)||50;
+
+  // 行ごとのeffectiveCntrで振り分け
+  const tRows=rows.filter(r=>r.base==='東京');
+  const kRows=rows.filter(r=>r.base==='神戸');
+
+  // パターンA
+  const tT20=tRows.filter(r=>r.effectiveCntr==='20FT').reduce((s,r)=>s+r.vol,0);
+  const tT40=tRows.filter(r=>r.effectiveCntr==='40HC').reduce((s,r)=>s+r.vol,0);
+  const kT20=kRows.filter(r=>r.effectiveCntr==='20FT').reduce((s,r)=>s+r.vol,0);
+  const kT40=kRows.filter(r=>r.effectiveCntr==='40HC').reduce((s,r)=>s+r.vol,0);
+  $('ca-t20').value=tT20>0?Math.ceil(tT20/cap20):0;
+  $('ca-t40').value=tT40>0?Math.ceil(tT40/cap40):0;
+  $('ca-k20').value=kT20>0?Math.ceil(kT20/cap20):0;
+  $('ca-k40').value=kT40>0?Math.ceil(kT40/cap40):0;
+
+  // パターンB（全物量を40HCで）
+  const allM=rows.reduce((s,r)=>s+r.vol,0);
+  $('cb-20').value=0;
+  $('cb-40').value=allM>0?Math.ceil(allM/cap40):0;
+
+  calc();
+};
 window.onOltChk = function(){
   // カードの選択状態をビジュアル反映
   [['olt-chk-4','olt-4-card'],['olt-chk-10','olt-10-card'],['olt-chk-10z','olt-10z-card']].forEach(([chkId,cardId])=>{
@@ -736,13 +975,21 @@ function ctCostFull(tokyoM3, kobeM3, C, fx, eurRate, isPatternB=false){
     unitsT,unitsK,unitsAll,cap};
 }
 
-// T/Sコスト: 行ごとにts_ratesから取得（コストマスターのts_cost_usdは参照しない）
-// tsRate = {ts_tariff, ts_min}、vol×ts_tariffとts_minの大きい方
+// T/Sコスト計算:
+//   ts_tariff > 0: コスト加算。ts_min>0 の場合は max(vol×tariff, min) を適用
+//   ts_tariff < 0: ディスカウント（コスト削減）。ミニマムは適用しない
+//   ts_tariff = 0: コストなし（Antwerp等）
 function rowTsCost(r, fx){
   if(!r.tsApply||!r.tsRate) return 0;
-  const raw = r.vol * nv(r.tsRate.ts_tariff);
-  const min  = nv(r.tsRate.ts_min);
-  return Math.max(raw, min) * fx;
+  const tariff = nv(r.tsRate.ts_tariff);
+  if(tariff === 0) return 0;
+  const raw = r.vol * tariff;
+  if(tariff > 0){
+    const min = nv(r.tsRate.ts_min);
+    return Math.max(raw, min) * fx;   // 正のコスト: ミニマム考慮
+  } else {
+    return raw * fx;   // 負（ディスカウント）: ミニマム不要
+  }
 }
 function calcRefund(totalM3,tsM3,C,fx){if(!C)return 0;return Math.max(0,totalM3-tsM3)*nv(C.refund_per_rt)*fx;}
 
@@ -755,7 +1002,14 @@ window.addRow=function(d={}){
   const rv=(k,fb=0)=>fmt(nv(d[k]??fb),nv(d[k]??fb)%1!==0?2:0);
   // DESTINATIONオプション生成（RTMを先頭に）
   const destOpts='<option value="RTM">RTM（T/Sなし）</option>'
-    +tsRates.map(t=>`<option value="${t.destination}">${t.destination}（$${t.ts_tariff}/m³${t.ts_min?` min$${t.ts_min}`:''}）</option>`).join('');
+    +tsRates.map(t=>{
+      const tariff=nv(t.ts_tariff);
+      let label=t.destination;
+      if(tariff>0)  label+=` (+$${t.ts_tariff}/m³${t.ts_min?` min$${t.ts_min}`:''})`; 
+      else if(tariff<0) label+=` (割引 $${t.ts_tariff}/m³)`;
+      else label+=` ($0 追加なし)`;
+      return `<option value="${t.destination}">${label}</option>`;
+    }).join('');
   tr.innerHTML=`
     <td><select class="ri ri-sel row-cust-sel" onchange="onRowCust(${id},this)"><option value="">-- 選択 --</option>${opts}</select></td>
     <td><select class="ri ri-base" id="rb-base-${id}" onchange="calc()"><option value="東京">東京</option><option value="神戸">神戸</option></select></td>
@@ -827,7 +1081,10 @@ window.onDestChange=function(id){
     $('row-'+id).classList.add('ts-row');
     if(autoLbl)autoLbl.textContent='自動ON';
     if(rate&&costDisp){
-      costDisp.textContent=`コスト $${rate.ts_tariff}/m³${rate.ts_min?` min$${rate.ts_min}`:''}`;
+      const t=nv(rate.ts_tariff);
+      if(t>0)       costDisp.textContent=`T/Sコスト: +$${rate.ts_tariff}/m³${rate.ts_min?` (min $${rate.ts_min})`:''}`;
+      else if(t<0)  costDisp.textContent=`T/S割引: $${rate.ts_tariff}/m³（コスト削減）`;
+      else          costDisp.textContent=`T/S追加コストなし`;
     }
   }
   calc();
@@ -949,30 +1206,82 @@ window.calc=function(){
   const totalRev=rows.reduce((s,r)=>s+rowRev(r,fx),0);
   const totalDelCost=rows.reduce((s,r)=>s+rowDelCost(r,fx),0);
   const totalMiscCost=rows.reduce((s,r)=>s+rowMiscCost(r),0);
-  // T/Sコスト: 各行のts_ratesから計算（ミニマム考慮）
   const totalTsCost=rows.reduce((s,r)=>s+rowTsCost(r,fx),0);
 
-  // ── Pattern A ──
-  // 行ごとのeffectiveCntrで東京・神戸それぞれ集計
-  const tT20=tRows.filter(r=>r.effectiveCntr==='20FT').reduce((s,r)=>s+r.vol,0);
-  const tT40=tRows.filter(r=>r.effectiveCntr==='40HC').reduce((s,r)=>s+r.vol,0);
-  const kT20=kRows.filter(r=>r.effectiveCntr==='20FT').reduce((s,r)=>s+r.vol,0);
-  const kT40=kRows.filter(r=>r.effectiveCntr==='40HC').reduce((s,r)=>s+r.vol,0);
+  // ── AGENTコスト計算 ───────────────────────────────────────────
+  // 選択中AGENTのレートを仕向地ごとに適用
+  let agentCost=0;
+  const agentCostLines=[];
+  if(selAgent){
+    rows.forEach(r=>{
+      const dest=r.dest||'RTM';
+      // 仕向地一致レートを優先、なければALLを使用
+      const rate=selAgent.rates.find(a=>a.destination===dest)
+               ||selAgent.rates.find(a=>a.destination==='ALL');
+      if(!rate) return;
+      const tsCostUSD=nv(rate.ts_cost_usd)*r.vol;
+      const fixedUSD =nv(rate.fixed_usd);
+      const handJPY  =nv(rate.handling_jpy);
+      const rowAgent =(tsCostUSD+fixedUSD)*fx+handJPY;
+      if(rowAgent!==0){
+        agentCost+=rowAgent;
+        agentCostLines.push(`${r.custName}(${dest}): ¥${fmt(rowAgent)}`);
+      }
+    });
+  }
 
-  const ctAT20=tT20>0?ctCostFull(tT20,0,sel20,fx,eurRate,false):{total:0,of:0,fix:0,vanTokyo:0,vanKobe:0,lashing:0,surcharge:0,unitsAll:0};
-  const ctAT40=tT40>0?ctCostFull(tT40,0,sel40,fx,eurRate,false):{total:0,of:0,fix:0,vanTokyo:0,vanKobe:0,lashing:0,surcharge:0,unitsAll:0};
-  const ctAK20=kT20>0?ctCostFull(0,kT20,sel20,fx,eurRate,false):{total:0,of:0,fix:0,vanTokyo:0,vanKobe:0,lashing:0,surcharge:0,unitsK:0};
-  const ctAK40=kT40>0?ctCostFull(0,kT40,sel40,fx,eurRate,false):{total:0,of:0,fix:0,vanTokyo:0,vanKobe:0,lashing:0,surcharge:0,unitsK:0};
-  const ctACost=ctAT20.total+ctAT40.total+ctAK20.total+ctAK40.total;
+  // ── 手動パネルから本数取得 ──────────────────────────────────
+  const caT20=Math.max(0,parseInt($('ca-t20')?.value)||0);
+  const caT40=Math.max(0,parseInt($('ca-t40')?.value)||0);
+  const caK20=Math.max(0,parseInt($('ca-k20')?.value)||0);
+  const caK40=Math.max(0,parseInt($('ca-k40')?.value)||0);
+  const cbN20=Math.max(0,parseInt($('cb-20')?.value)||0);
+  const cbN40=Math.max(0,parseInt($('cb-40')?.value)||0);
+
+  // ── コンテナ費用（本数指定版） ───────────────────────────────
+  function ctByUnits(units, m3, C, fx, eurRate, isKobe=false){
+    if(!C||units<=0) return{total:0,of:0,fix:0,van:0,lash:0,sur:0};
+    const ofJPY =(nv(C.ocean_freight)+nv(C.baf_ees_efs))*fx;
+    const fixJPY= nv(C.thc_etc)+nv(C.doc_fee)+nv(C.seal_fee)+nv(C.cml_fee);
+    const vanRate=isKobe?nv($('van-kobe').value):nv($('van-tokyo').value);
+    const vanMin =isKobe?10:(C.container_type==='40HC'?26:13);
+    const vanM3  =Math.max(m3/units,vanMin)*units;  // 1本あたりミニマムを確認
+    const van    =vanM3*vanRate;
+    const lashingJPY=nv($('lashing').value);
+    const lash   =isKobe?units*lashingJPY:0;
+    const surUSD =nv(C.ens_usd)+nv(C.csl_usd)+nv(C.ecc_usd)+nv(C.stf_usd)+nv(C.efl_usd);
+    const surEUR =nv(C.ees_eur);
+    const sur    =(surUSD*fx+surEUR*eurRate)*units;
+    const total  =(ofJPY+fixJPY)*units+van+lash+sur;
+    return{total,of:ofJPY*units,fix:fixJPY*units,van,lash,sur,units};
+  }
+
+  // パターンA コスト
+  const cAT20=ctByUnits(caT20,tM,sel20,fx,eurRate,false);
+  const cAT40=ctByUnits(caT40,tM,sel40,fx,eurRate,false);
+  const cAK20=ctByUnits(caK20,kM,sel20,fx,eurRate,true);
+  const cAK40=ctByUnits(caK40,kM,sel40,fx,eurRate,true);
+  const ctACost=cAT20.total+cAT40.total+cAK20.total+cAK40.total;
   const refA=calcRefund(allM,tsM,sel20,fx);
-  const costA=ctACost+totalTsCost+totalDelCost+totalMiscCost;
+  const costA=ctACost+totalTsCost+agentCost+totalDelCost+totalMiscCost;
   const profA=totalRev-costA+refA;
 
-  // ── Pattern B ── 全物量東京で40HC
-  const ctB=ctCostFull(allM,0,sel40,fx,eurRate,true);
+  // パターンB コスト
+  const cBT20=ctByUnits(cbN20,allM,sel20,fx,eurRate,false);
+  const cBT40=ctByUnits(cbN40,allM,sel40,fx,eurRate,false);
+  const ctBCost=cBT20.total+cBT40.total;
   const refB=calcRefund(allM,tsM,sel40,fx);
-  const costB=ctB.total+oltTotal+totalTsCost+totalDelCost+totalMiscCost;
+  const costB=ctBCost+oltTotal+totalTsCost+agentCost+totalDelCost+totalMiscCost;
   const profB=totalRev-costB+refB;
+
+  // パネルにメモ表示
+  const cap20=nv(sel20?.cap_m3)||25, cap40=nv(sel40?.cap_m3)||50;
+  const maxA=(caT20+caK20)*cap20+(caT40+caK40)*cap40;
+  const maxB=cbN20*cap20+cbN40*cap40;
+  if($('ca-note')) $('ca-note').textContent=
+    `東京: 20FT${caT20}本(max${fmt(caT20*cap20,0)}m³) 40HC${caT40}本(max${fmt(caT40*cap40,0)}m³) / 神戸: 20FT${caK20}本 40HC${caK40}本 / 合計容量 ${fmt(maxA,0)}m³（物量 ${fmt(tM+kM,1)}m³）`;
+  if($('cb-note')) $('cb-note').textContent=
+    `20FT${cbN20}本(max${fmt(cbN20*cap20,0)}m³) + 40HC${cbN40}本(max${fmt(cbN40*cap40,0)}m³) / 合計容量 ${fmt(maxB,0)}m³（物量 ${fmt(allM,1)}m³）`;
 
   // サマリー
   $('sv-t').textContent=fmt(tM,1)+'m³';
@@ -982,17 +1291,27 @@ window.calc=function(){
   $('sv-ref-vol').textContent=fmt(refM,1)+'m³';
   $('sv-rev').textContent=fmtY(totalRev);
   $('sv-ref').textContent=fmtY(Math.max(refA,refB));
+  // AGENTコスト表示
+  if(agentCost!==0){
+    $('sv-agent-wrap').style.display='';
+    $('sv-agent').textContent=fmtY(agentCost);
+  } else {
+    $('sv-agent-wrap').style.display='none';
+  }
   const spa=$('sv-pa');spa.textContent=fmtY(profA);spa.className='sv '+(profA>=0?'pos':'neg');
   const spb=$('sv-pb');spb.textContent=fmtY(profB);spb.className='sv '+(profB>=0?'pos':'neg');
   $('sum-bar').style.display='flex';
 
   // ── 詳細A ──
   const dA=[];
-  if(tT20>0){dA.push(dr(`東京 20FT×${ctAT20.unitsAll} O/F+BAF`,fmtY(ctAT20.of)),dr('東京 20FT 固定費',fmtY(ctAT20.fix)),dr(`東京 VANNING 20FT (${fmt(tT20,1)}m³)`,fmtY(ctAT20.vanTokyo)));}
-  if(tT40>0){dA.push(dr(`東京 40HC×${ctAT40.unitsAll} O/F+BAF`,fmtY(ctAT40.of)),dr('東京 40HC 固定費',fmtY(ctAT40.fix)),dr(`東京 VANNING 40HC (${fmt(tT40,1)}m³)`,fmtY(ctAT40.vanTokyo)));}
-  if(kT20>0){dA.push(dr(`神戸 20FT×${ctAK20.unitsK||1} O/F+BAF`,fmtY(ctAK20.of)),dr('神戸 20FT 固定費',fmtY(ctAK20.fix)),dr(`神戸 VANNING 20FT (${fmt(kT20,1)}m³)`,fmtY(ctAK20.vanKobe)),dr('ラッシング',fmtY(ctAK20.lashing)));}
-  if(kT40>0){dA.push(dr(`神戸 40HC×${ctAK40.unitsK||1} O/F+BAF`,fmtY(ctAK40.of)),dr('神戸 40HC 固定費',fmtY(ctAK40.fix)),dr(`神戸 VANNING 40HC (${fmt(kT40,1)}m³)`,fmtY(ctAK40.vanKobe)),dr('ラッシング',fmtY(ctAK40.lashing)));}
-  if(totalTsCost>0) dA.push(dr('T/Sコスト（仕向地別・ミニマム考慮）',fmtY(totalTsCost),'ts-cost'));
+  if(caT20>0) dA.push(dr(`東京 20FT×${caT20}本 O/F+BAF`,fmtY(cAT20.of)),dr('東京 20FT 固定費',fmtY(cAT20.fix)),dr(`東京 VANNING 20FT`,fmtY(cAT20.van)));
+  if(caT40>0) dA.push(dr(`東京 40HC×${caT40}本 O/F+BAF`,fmtY(cAT40.of)),dr('東京 40HC 固定費',fmtY(cAT40.fix)),dr(`東京 VANNING 40HC`,fmtY(cAT40.van)));
+  if(caK20>0) dA.push(dr(`神戸 20FT×${caK20}本 O/F+BAF`,fmtY(cAK20.of)),dr('神戸 20FT 固定費',fmtY(cAK20.fix)),dr('神戸 VANNING 20FT',fmtY(cAK20.van)),dr('ラッシング',fmtY(cAK20.lash)));
+  if(caK40>0) dA.push(dr(`神戸 40HC×${caK40}本 O/F+BAF`,fmtY(cAK40.of)),dr('神戸 40HC 固定費',fmtY(cAK40.fix)),dr('神戸 VANNING 40HC',fmtY(cAK40.van)),dr('ラッシング',fmtY(cAK40.lash)));
+  if((cAT20.sur+cAT40.sur+cAK20.sur+cAK40.sur)>0) dA.push(dr('追加サーチャージ',fmtY(cAT20.sur+cAT40.sur+cAK20.sur+cAK40.sur)));
+  if(totalTsCost>0)  dA.push(dr('T/Sコスト（仕向地別・ミニマム考慮）',fmtY(totalTsCost),'ts-cost'));
+  if(totalTsCost<0)  dA.push(dr('T/S割引（Le Havre等）',fmtY(totalTsCost),'refund'));
+  if(agentCost!==0)  dA.push(dr(`AGENTコスト（${selAgent?.name||''}）`,fmtY(agentCost),'ts-cost'));
   if(totalMiscCost>0) dA.push(dr('段積不可/パレタイズ',fmtY(totalMiscCost)));
   dA.push(dr('現地Delivery合計',fmtY(totalDelCost)));
   dA.push('<div class="divider"></div>');
@@ -1000,25 +1319,27 @@ window.calc=function(){
   $('det-a').innerHTML=dA.join('');
 
   // ── 詳細B ──
-  $('det-b').innerHTML=
-    dr(`40HC×${ctB.unitsAll} O/F+BAF`,fmtY(ctB.of))
-   +dr('固定費',fmtY(ctB.fix))
-   +dr(`VANNING (${fmt(allM,1)}m³×¥${fmt(nv($('van-tokyo').value))})`,fmtY(ctB.vanTokyo))
-   +(ctB.surcharge>0?dr('追加サーチャージ',fmtY(ctB.surcharge)):'')
-   +(totalTsCost>0?dr('T/Sコスト（仕向地別・ミニマム考慮）',fmtY(totalTsCost),'ts-cost'):'')
-   +'<div class="divider"></div>'
-   +(kM>0?(oltTruck>0?dr(`OLT トラック (${oltDesc})`,fmtY(oltTruck),'olt'):dr('OLT','手配なし','olt')):dr('OLT','なし','olt'))
-   +(totalMiscCost>0?dr('段積不可/パレタイズ',fmtY(totalMiscCost)):'')
-   +dr('現地Delivery合計',fmtY(totalDelCost))
-   +'<div class="divider"></div>'
-   +dr(`REFUND ($${fmt(sel40.refund_per_rt,2)}/RT × ${fmt(refM,1)}m³)`,fmtY(refB),'refund');
+  const dB=[];
+  if(cbN20>0) dB.push(dr(`20FT×${cbN20}本 O/F+BAF`,fmtY(cBT20.of)),dr('20FT 固定費',fmtY(cBT20.fix)),dr('VANNING 20FT',fmtY(cBT20.van)));
+  if(cbN40>0) dB.push(dr(`40HC×${cbN40}本 O/F+BAF`,fmtY(cBT40.of)),dr('40HC 固定費',fmtY(cBT40.fix)),dr('VANNING 40HC',fmtY(cBT40.van)));
+  if((cBT20.sur+cBT40.sur)>0) dB.push(dr('追加サーチャージ',fmtY(cBT20.sur+cBT40.sur)));
+  if(totalTsCost>0) dB.push(dr('T/Sコスト（仕向地別・ミニマム考慮）',fmtY(totalTsCost),'ts-cost'));
+  if(totalTsCost<0) dB.push(dr('T/S割引（Le Havre等）',fmtY(totalTsCost),'refund'));
+  if(agentCost!==0) dB.push(dr(`AGENTコスト（${selAgent?.name||''}）`,fmtY(agentCost),'ts-cost'));
+  dB.push('<div class="divider"></div>');
+  dB.push(kM>0?(oltTruck>0?dr(`OLT トラック (${oltDesc})`,fmtY(oltTruck),'olt'):dr('OLT','手配なし','olt')):dr('OLT','なし','olt'));
+  if(totalMiscCost>0) dB.push(dr('段積不可/パレタイズ',fmtY(totalMiscCost)));
+  dB.push(dr('現地Delivery合計',fmtY(totalDelCost)));
+  dB.push('<div class="divider"></div>');
+  dB.push(dr(`REFUND ($${fmt(sel40.refund_per_rt,2)}/RT × ${fmt(refM,1)}m³)`,fmtY(refB),'refund'));
+  $('det-b').innerHTML=dB.join('');
 
-  // 顧客内訳
+  // 顧客内訳（T/S仕向地・コンテナタイプ表示）
   const cbHtml=rows.map(r=>{
     const rev=rowRev(r,fx);
     const tsCost=rowTsCost(r,fx);
     const{label,cls}=baseInfo(r.base==='東京'?'TOKYO':'KOBE');
-    const tsTag=r.tsApply?`<span class="ts-badge" style="background:var(--purple-bg);color:var(--purple)">T/S:${r.dest}</span>`:'';
+    const tsTag=r.tsApply?`<span class="ts-badge" style="background:var(--purple-bg);color:var(--purple);font-size:9px">${r.dest}</span>`:'';
     const cntrTag=`<span style="font-size:9px;background:#F5F0FF;color:var(--purple);padding:1px 4px;border-radius:3px">${r.effectiveCntr}</span>`;
     return `<div class="cb-row">
       <span class="cb-name">${r.custName}&nbsp;${tsTag}&nbsp;${cntrTag}</span>
@@ -1028,6 +1349,12 @@ window.calc=function(){
     </div>`;
   }).join('');
   $('cb-a').innerHTML=cbHtml;$('cb-b').innerHTML=cbHtml;
+
+  // 結果カードのrsub更新
+  const rsubA=document.querySelector('#rc-a .rsub');
+  if(rsubA) rsubA.textContent=`東京: 20FT×${caT20} / 40HC×${caT40}　神戸: 20FT×${caK20} / 40HC×${caK40}`;
+  const rsubB=document.querySelector('#rc-b .rsub');
+  if(rsubB) rsubB.textContent=`20FT×${cbN20} / 40HC×${cbN40}（OLT込み）`;
 
   ['a','b'].forEach(p=>{
     const prof=p==='a'?profA:profB,cost=p==='a'?costA:costB;
@@ -1084,11 +1411,22 @@ window.openCM=function(c=null){
   // DESTINATIONセレクトを動的生成
   const dsel=$('cm-dest');
   dsel.innerHTML='<option value="RTM">RTM（T/Sなし）</option>'
-    +tsRates.map(t=>`<option value="${t.destination}">${t.destination}（$${t.ts_tariff}/m³${t.ts_min?` min$${t.ts_min}`:''}）</option>`).join('');
+    +tsRates.map(t=>{
+      const tariff=nv(t.ts_tariff);
+      let label=t.destination;
+      if(tariff>0)  label+=` (+$${t.ts_tariff}/m³${t.ts_min?` min$${t.ts_min}`:''})`; 
+      else if(tariff<0) label+=` (割引 $${t.ts_tariff}/m³)`;
+      else label+=` ($0 追加なし)`;
+      return `<option value="${t.destination}">${label}</option>`;
+    }).join('');
   dsel.value=c?.destination||'RTM';
   dsel.onchange=()=>{
     const r=tsRates.find(t=>t.destination===dsel.value);
-    $('cm-dest-info').textContent=r?`T/Sコスト: $${r.ts_tariff}/m³${r.ts_min?` ミニマム$${r.ts_min}`:''}（仕向地変更でT/S自動適用）`:'';
+    if(!r){ $('cm-dest-info').textContent=''; return; }
+    const t=nv(r.ts_tariff);
+    if(t>0)      $('cm-dest-info').textContent=`T/Sコスト: +$${r.ts_tariff}/m³${r.ts_min?` (min $${r.ts_min})`:''} → 選択でT/S自動適用`;
+    else if(t<0) $('cm-dest-info').textContent=`T/S割引: $${r.ts_tariff}/m³（コスト削減）→ 選択でT/S自動適用`;
+    else         $('cm-dest-info').textContent=`T/S追加コストなし（Antwerpのみ通常追加なし）`;
   };
   dsel.dispatchEvent(new Event('change'));
   [['cm-of',c?.of_sell],['cm-lss',c?.lss_sell],['cm-pss',c?.pss_sell],
@@ -1209,13 +1547,77 @@ window.delCostRow=async function(id){
   toast('削除しました');await loadAll();renderCostTable();
 };
 
+
+// ── AGENT マスターテーブル ────────────────────────────────────
+function renderAgentTable(){
+  const tb=$('atb');
+  if(!agentRates.length){tb.innerHTML='<tr><td colspan="7" class="loading">AGENTが登録されていません</td></tr>';return;}
+  tb.innerHTML=agentRates.map(a=>{
+    const destBadge=a.destination==='ALL'
+      ?`<span style="font-size:10px;background:var(--sur2);color:var(--tx2);padding:1px 6px;border-radius:3px">ALL</span>`
+      :`<span style="font-size:10px;background:var(--purple-bg);color:var(--purple);padding:1px 6px;border-radius:3px">${a.destination}</span>`;
+    return `<tr>
+      <td><strong style="color:var(--purple)">${a.agent_name}</strong></td>
+      <td>${destBadge}</td>
+      <td class="ts-cell">${nv(a.ts_cost_usd)?'$'+fmt(a.ts_cost_usd,2):'-'}</td>
+      <td class="hm-cell">${nv(a.fixed_usd)?'$'+fmt(a.fixed_usd,2):'-'}</td>
+      <td>${nv(a.handling_jpy)?'¥'+fmt(a.handling_jpy):'-'}</td>
+      <td style="font-size:11px;color:var(--tx3)">${a.memo||'-'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" style="margin-right:4px" onclick="window.editAgent('${a.id}')">編集</button>
+        <button class="delbtn" onclick="window.delAgent('${a.id}')">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+window.openAM=function(a=null){
+  $('am-title').textContent=a?'AGENTを編集':'AGENTを追加';
+  $('am-id').value=a?.id||'';
+  $('am-name').value=a?.agent_name||'';
+  // 仕向地セレクト動的生成
+  const dsel=$('am-dest');
+  dsel.innerHTML='<option value="ALL">ALL（全仕向地共通）</option>'
+    +tsRates.map(t=>`<option value="${t.destination}">${t.destination}</option>`).join('');
+  dsel.value=a?.destination||'ALL';
+  [['am-ts-cost',a?.ts_cost_usd],['am-fixed',a?.fixed_usd],['am-handling',a?.handling_jpy]].forEach(([id,v])=>{
+    const el=$(id);if(!el)return;const n=nv(v);el.value=fmt(n,n%1!==0?2:0);
+  });
+  $('am-memo').value=a?.memo||'';
+  $('am-modal').style.display='block';
+};
+window.closeAM=()=>{$('am-modal').style.display='none';};
+window.editAgent=id=>window.openAM(agentRates.find(a=>a.id===id));
+window.saveAgent=async function(){
+  const name=$('am-name').value.trim();
+  if(!name){toast('AGENT名を入力してください','err');return;}
+  const g=id=>nv($(id).value);
+  const row={
+    agent_name:name,destination:$('am-dest').value,
+    ts_cost_usd:g('am-ts-cost'),fixed_usd:g('am-fixed'),handling_jpy:g('am-handling'),
+    memo:$('am-memo').value,updated_at:new Date().toISOString()
+  };
+  const id=$('am-id').value;
+  const{error}=id?await db.from('agent_rates').update(row).eq('id',id):await db.from('agent_rates').insert(row);
+  if(error){toast('保存失敗: '+error.message,'err');return;}
+  toast('保存しました');window.closeAM();await loadAll();renderAgentTable();
+};
+window.delAgent=async function(id){
+  if(!confirm('削除しますか？'))return;
+  const{error}=await db.from('agent_rates').delete().eq('id',id);
+  if(error){toast('削除失敗: '+error.message,'err');return;}
+  toast('削除しました');await loadAll();renderAgentTable();
+};
+
 // 入力変更時に再計算
 ['olt-tr4','olt-tr10','olt-tr10z','van-tokyo','van-kobe','lashing'].forEach(id=>{
   const el=$(id);if(el)el.addEventListener('input',()=>{fmtI(el);calc();});
 });
 
-await loadAll();
-window.addRow();
+(async function(){
+  await loadAll();
+  window.addRow();
+})();
 </script>
 </body>
 </html>
