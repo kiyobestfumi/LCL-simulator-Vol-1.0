@@ -165,12 +165,31 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 
   <div class="card">
     <div class="ct">基本設定</div>
-    <div class="g4">
-      <div class="f"><label>船社</label>
-        <select id="sim-carrier" onchange="onCarrierChange()" style="padding:6px 9px">
+    <!-- 積み地別船社 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:.75rem">
+      <div style="background:var(--blue-bg);border:1px solid var(--blue-brd);border-radius:var(--r);padding:.65rem .9rem">
+        <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">東京 — 船社</div>
+        <select id="sim-carrier-t" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--blue-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
           <option value="">-- 選択 --</option>
         </select>
+        <div id="carrier-info-t" style="margin-top:.35rem;font-size:11px;color:var(--blue)"></div>
       </div>
+      <div style="background:var(--red-bg);border:1px solid var(--red-brd);border-radius:var(--r);padding:.65rem .9rem">
+        <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">神戸 — 船社</div>
+        <select id="sim-carrier-k" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--red-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
+          <option value="">-- 選択 --</option>
+        </select>
+        <div id="carrier-info-k" style="margin-top:.35rem;font-size:11px;color:var(--red)"></div>
+      </div>
+      <div style="background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.65rem .9rem">
+        <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">パターンB — 船社（合算）</div>
+        <select id="sim-carrier-b" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--acc-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
+          <option value="">-- 選択 --</option>
+        </select>
+        <div id="carrier-info-b" style="margin-top:.35rem;font-size:11px;color:var(--acc)"></div>
+      </div>
+    </div>
+    <div class="g3">
       <div class="f"><label>AGENT（T/S手配）</label>
         <select id="sim-agent" onchange="onAgentChange()" style="padding:6px 9px">
           <option value="">-- なし --</option>
@@ -179,7 +198,6 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div class="f"><label>為替 USD/JPY</label><input type="text" id="sim-fx" value="155" oninput="fmtI(this);calc()"></div>
       <div class="f"><label>EUR/JPY（HMM EES用）</label><input type="text" id="sim-eur" value="165" oninput="fmtI(this);calc()"></div>
     </div>
-    <div id="carrier-info" style="margin-top:.5rem"></div>
     <div id="agent-info" style="margin-top:.3rem"></div>
   </div>
 
