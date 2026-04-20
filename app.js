@@ -405,7 +405,7 @@ window.addRow = function(d) {
         '</label>' +
       '</div>' +
     '</td>' +
-    '<td style="text-align:center;background:var(--purple-bg)"><select class="ri" id="rb-cntr-' + id + '" onchange="calc()" style="font-size:11px;font-family:var(--sans);min-width:65px;background:var(--purple-bg);border-color:var(--purple-brd);color:var(--purple);font-weight:600"><option value="auto">自動</option><option value="20FT">20FT</option><option value="40HC">40HC</option></select><div id="rb-cntr-auto-' + id + '" style="font-size:9px;color:var(--tx3);margin-top:1px"></div></td>' +
+    '<td style="text-align:center;background:var(--purple-bg);padding:3px 5px"><div id="rb-cntr-auto-' + id + '" style="font-size:10px;font-weight:600;color:var(--purple);min-width:38px"></div></td>' +
     '<td><input class="ri ri-sm" id="rb-of-' + id + '" type="text" value="' + rv('of_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-lss-' + id + '" type="text" value="' + rv('lss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-pss-' + id + '" type="text" value="' + rv('pss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
@@ -473,11 +473,8 @@ window.onDestChange = function(id) {
 window.onVolChange = function(id) {
   fmtI($('rb-vol-' + id));
   var vol = nv($('rb-vol-' + id) ? $('rb-vol-' + id).value : 0);
-  var cntrSel = $('rb-cntr-' + id);
   var autoLbl = $('rb-cntr-auto-' + id);
-  if (cntrSel && cntrSel.value === 'auto' && autoLbl) {
-    autoLbl.textContent = vol > 25 ? '→40HC' : '→20FT';
-  }
+  if (autoLbl) autoLbl.textContent = vol > 25 ? '40HC' : '20FT';
   calc();
 };
 
@@ -517,9 +514,7 @@ function getRows() {
       customers.forEach(function(c) { if (c.id === custId) custName = c.name; });
     }
     var vol = g('vol');
-    var cntrEl = $('rb-cntr-' + id);
-    var cntrOv = cntrEl ? cntrEl.value : 'auto';
-    var eCntr  = cntrOv === 'auto' ? (vol > 25 ? '40HC' : '20FT') : cntrOv;
+    var eCntr  = vol > 25 ? '40HC' : '20FT';
     var dest   = $('rb-dest-' + id) ? $('rb-dest-' + id).value : 'RTM';
     var tsRate = null;
     if (dest !== 'RTM') tsRates.forEach(function(t) { if (t.destination === dest) tsRate = t; });
@@ -581,11 +576,10 @@ window.calc = function() {
   var allMB = rowsB.reduce(function(s, r) { return s + r.vol; }, 0);
   var tsMB  = rowsB.filter(function(r) { return r.tsApply; }).reduce(function(s, r) { return s + r.vol; }, 0);
 
-  // コンテナ自動判定ラベル
+  // コンテナ自動判定ラベル更新
   rows.forEach(function(r) {
     var lbl = $('rb-cntr-auto-' + r.id);
-    var sel = $('rb-cntr-' + r.id);
-    if (lbl && sel && sel.value === 'auto') lbl.textContent = r.vol > 25 ? '→40HC' : '→20FT';
+    if (lbl) lbl.textContent = r.vol > 25 ? '40HC' : '20FT';
   });
 
   // OLT（パターンA：神戸荷主のうちAに含まれる分、パターンB：Bに含まれる全神戸分）
@@ -606,11 +600,10 @@ window.calc = function() {
   var oltForA   = oltApplyA ? oltA.total : 0;
   var oltForB   = oltApplyB ? oltB.total : 0;
 
-  // 船社選択チェック
-  var hasT = selT20 || selT40;
-  var hasK = selK20 || selK40;
-  var hasB = selBT20 || selBT40 || selBK20 || selBK40;
-  if ((!hasT && !hasK) || !hasB || !rows.length) {
+  // 船社選択チェック（パターンAとBは独立して判定）
+  var hasA = (selT20 || selT40 || selK20 || selK40);
+  var hasB = (selBT20 || selBT40 || selBK20 || selBK40);
+  if ((!hasA && !hasB) || !rows.length) {
     $('result-card').style.display = 'none';
     $('sum-bar').style.display = 'none';
     return;
@@ -1138,7 +1131,6 @@ function collectSimData() {
       base:     g('base'),
       vol:      g('vol'),
       dest:     document.getElementById('rb-dest-' + id) ? document.getElementById('rb-dest-' + id).value : 'RTM',
-      cntr:     document.getElementById('rb-cntr-' + id) ? document.getElementById('rb-cntr-' + id).value : 'auto',
       tsApply:  document.getElementById('rb-tschk-' + id) ? document.getElementById('rb-tschk-' + id).checked : false,
       useA:     document.getElementById('rb-use-a-' + id) ? document.getElementById('rb-use-a-' + id).checked : true,
       useB:     document.getElementById('rb-use-b-' + id) ? document.getElementById('rb-use-b-' + id).checked : true,
@@ -1253,9 +1245,6 @@ async function restoreSimData(data) {
         document.getElementById('rb-dest-' + id).value = r.dest;
         onDestChange(id);
       }
-      // コンテナ
-      if (document.getElementById('rb-cntr-' + id) && r.cntr)
-        document.getElementById('rb-cntr-' + id).value = r.cntr;
       // T/Sチェック
       if (document.getElementById('rb-tschk-' + id)) {
         document.getElementById('rb-tschk-' + id).checked = !!r.tsApply;
