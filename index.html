@@ -230,6 +230,21 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 
   <div class="card">
     <div class="ct">OLT トラック費用（神戸→東京）<span style="font-size:10px;color:var(--tx3);font-weight:400;margin-left:.3rem">チェックして手配するトラックを選択</span></div>
+
+    <!-- パターン別 OLT 適用チェック -->
+    <div style="display:flex;gap:12px;margin-bottom:.75rem;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:6px;background:var(--blue-bg);border:1px solid var(--blue-brd);border-radius:var(--r);padding:.45rem .85rem;cursor:pointer;font-size:12px;font-weight:600;color:var(--blue)">
+        <input type="checkbox" id="olt-apply-a" onchange="calc()" style="width:15px;height:15px;accent-color:var(--blue)">
+        パターンA に OLT を適用
+        <span style="font-size:10px;font-weight:400;color:var(--blue);margin-left:4px">（東京・神戸それぞれ仕立ての場合も神戸→東京横持を含む）</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.45rem .85rem;cursor:pointer;font-size:12px;font-weight:600;color:var(--acc)">
+        <input type="checkbox" id="olt-apply-b" onchange="calc()" checked style="width:15px;height:15px;accent-color:var(--acc)">
+        パターンB に OLT を適用
+        <span style="font-size:10px;font-weight:400;color:var(--acc);margin-left:4px">（神戸→東京横持 → 合算仕立て）</span>
+      </label>
+    </div>
+
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.7rem;align-items:stretch">
       <label id="olt-4-card" style="display:flex;flex-direction:column;gap:4px;border:1px solid var(--brd);border-radius:var(--r);padding:.6rem .9rem;cursor:pointer;min-width:155px">
         <div style="display:flex;align-items:center;gap:6px">
@@ -273,6 +288,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
             <th rowspan="2">拠点</th>
             <th rowspan="2" style="min-width:52px">物量 m³</th>
             <th rowspan="2" class="ts">仕向地</th>
+            <th rowspan="2" style="background:#F0F8E8;color:#2D6A1A;text-align:center;min-width:60px;font-size:9px">適用<br>パターン</th>
             <th rowspan="2" style="min-width:70px;background:var(--purple-bg);color:var(--purple)">CNTR</th>
             <th colspan="5" class="sea" style="text-align:center">海上諸掛 USD/m³</th>
             <th colspan="3" class="dom" style="text-align:center">国内/m³ JPY</th>
@@ -396,6 +412,30 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       </div>
     </div>
     <div id="concl"></div>
+  </div>
+
+  <!-- 保存・共有カード -->
+  <div class="card" id="save-card" style="display:none;border-color:var(--acc-brd);background:var(--acc-bg)">
+    <div class="ct" style="color:var(--acc)">シミュレーション結果を保存・共有</div>
+    <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div class="f" style="flex:1;min-width:200px">
+        <label>タイトル（保存名）</label>
+        <input type="text" id="sim-title" placeholder="例: 2025年4月 ONE vs HMM 比較" style="font-family:var(--sans)">
+      </div>
+      <button class="btn btn-a" onclick="saveSimulation()" style="white-space:nowrap;padding:7px 20px">
+        💾 保存して共有URLを生成
+      </button>
+    </div>
+    <div id="share-result" style="margin-top:.75rem;display:none">
+      <div style="background:var(--sur);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.75rem 1rem">
+        <div style="font-size:11px;color:var(--acc);font-weight:700;margin-bottom:.35rem">共有URL</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="share-url" readonly style="flex:1;font-family:var(--mono);font-size:12px;background:var(--sur2);border:1px solid var(--brd);border-radius:5px;padding:5px 8px;min-width:200px">
+          <button class="btn btn-sm" onclick="copyShareUrl()" style="white-space:nowrap">📋 コピー</button>
+        </div>
+        <div id="share-code-disp" style="font-size:11px;color:var(--tx3);margin-top:.35rem"></div>
+      </div>
+    </div>
   </div>
 </div>
 
