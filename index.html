@@ -166,27 +166,34 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   <div class="card">
     <div class="ct">基本設定</div>
     <!-- 積み地別船社 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:.75rem">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:.75rem">
       <div style="background:var(--blue-bg);border:1px solid var(--blue-brd);border-radius:var(--r);padding:.65rem .9rem">
-        <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">東京 — 船社</div>
+        <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">パターンA — 東京 船社</div>
         <select id="sim-carrier-t" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--blue-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
           <option value="">-- 選択 --</option>
         </select>
         <div id="carrier-info-t" style="margin-top:.35rem;font-size:11px;color:var(--blue)"></div>
       </div>
       <div style="background:var(--red-bg);border:1px solid var(--red-brd);border-radius:var(--r);padding:.65rem .9rem">
-        <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">神戸 — 船社</div>
+        <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">パターンA — 神戸 船社</div>
         <select id="sim-carrier-k" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--red-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
           <option value="">-- 選択 --</option>
         </select>
         <div id="carrier-info-k" style="margin-top:.35rem;font-size:11px;color:var(--red)"></div>
       </div>
       <div style="background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.65rem .9rem">
-        <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">パターンB — 船社（合算）</div>
-        <select id="sim-carrier-b" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--acc-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
+        <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">パターンB — 東京 船社</div>
+        <select id="sim-carrier-bt" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--acc-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
           <option value="">-- 選択 --</option>
         </select>
-        <div id="carrier-info-b" style="margin-top:.35rem;font-size:11px;color:var(--acc)"></div>
+        <div id="carrier-info-bt" style="margin-top:.35rem;font-size:11px;color:var(--acc)"></div>
+      </div>
+      <div style="background:var(--green-bg);border:1px solid var(--green-brd);border-radius:var(--r);padding:.65rem .9rem">
+        <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">パターンB — 神戸 船社</div>
+        <select id="sim-carrier-bk" onchange="onCarrierChange()" style="padding:6px 9px;width:100%;border:1px solid var(--green-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
+          <option value="">-- 選択 --</option>
+        </select>
+        <div id="carrier-info-bk" style="margin-top:.35rem;font-size:11px;color:var(--green)"></div>
       </div>
     </div>
     <div class="g3">
@@ -275,6 +282,11 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         <div id="olt-total-disp" style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--blue)">-</div>
         <div id="olt-detail-disp" style="font-size:10px;color:var(--blue);line-height:1.5"></div>
       </div>
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:4px;background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.6rem .9rem;min-width:170px">
+        <div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.06em">入出庫料 JPY/RT</div>
+        <input type="text" id="olt-handling" value="1,800" oninput="fmtI(this);calc()" style="font-family:var(--mono);font-size:14px;padding:4px 7px;border:1px solid var(--amber-brd);border-radius:5px;background:var(--sur);color:var(--amber);font-weight:600;width:100%">
+        <div style="font-size:10px;color:var(--amber)">神戸貨物に適用</div>
+      </div>
     </div>
   </div>
 
@@ -353,18 +365,33 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         <div id="ca-note" style="font-size:10px;color:var(--tx3);margin-top:.5rem"></div>
       </div>
       <div style="border:1px solid var(--brd);border-radius:var(--r);padding:.75rem">
-        <div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.6rem">パターンB — OLT → 合算仕立て</div>
-        <div style="background:var(--acc-bg);border-radius:var(--r);padding:.6rem .8rem">
-          <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:.4rem">東京（合算）</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-            <label style="font-size:11px;color:var(--tx2);min-width:32px">20FT</label>
-            <input type="number" id="cb-20" min="0" value="0" onchange="calc()" style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
-            <span style="font-size:11px;color:var(--tx2)">本</span>
+        <div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.6rem">パターンB — OLT → 積み地別仕立て</div>
+        <div class="g2">
+          <div style="background:var(--acc-bg);border-radius:var(--r);padding:.6rem .8rem">
+            <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:.4rem">東京（B）</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">20FT</label>
+              <input type="number" id="cb-t20" min="0" value="0" onchange="calc()" style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">40HC</label>
+              <input type="number" id="cb-t40" min="0" value="0" onchange="calc()" style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <label style="font-size:11px;color:var(--tx2);min-width:32px">40HC</label>
-            <input type="number" id="cb-40" min="0" value="0" onchange="calc()" style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
-            <span style="font-size:11px;color:var(--tx2)">本</span>
+          <div style="background:var(--green-bg);border-radius:var(--r);padding:.6rem .8rem">
+            <div style="font-size:10px;font-weight:700;color:var(--green);margin-bottom:.4rem">神戸（B）</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">20FT</label>
+              <input type="number" id="cb-k20" min="0" value="0" onchange="calc()" style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:11px;color:var(--tx2);min-width:32px">40HC</label>
+              <input type="number" id="cb-k40" min="0" value="0" onchange="calc()" style="width:52px;font-family:var(--mono);font-size:13px;padding:4px 6px;border:1px solid var(--brd2);border-radius:5px;text-align:center">
+              <span style="font-size:11px;color:var(--tx2)">本</span>
+            </div>
           </div>
         </div>
         <div id="cb-note" style="font-size:10px;color:var(--tx3);margin-top:.5rem"></div>
@@ -477,6 +504,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         <th class="rh">REFUND/RT$</th>
         <th class="kh">VAN東京/m³</th><th class="kh">VAN東京MIN</th>
         <th class="kh">VAN神戸/m³</th><th class="kh">VAN神戸MIN</th><th class="kh">ラッシング</th>
+        <th class="kh">入出庫料/RT</th>
         <th class="gh">段積不可</th><th class="gh">パレタイズ</th>
         <th></th>
       </tr></thead>
@@ -578,9 +606,10 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div class="g2" style="margin-bottom:.6rem">
       <div class="sec-box t-box" style="padding:.5rem .7rem">
         <div class="sec-lbl t">東京</div>
-        <div class="g2">
+        <div class="g3">
           <div class="f"><label>VANNING JPY/m³</label><input type="text" id="km-van-tokyo" oninput="fmtI(this)"></div>
           <div class="f"><label>OLT JPY/m³</label><input type="text" id="km-olt-rt" oninput="fmtI(this)"></div>
+          <div class="f"><label>入出庫料 JPY/RT</label><input type="text" id="km-handling" oninput="fmtI(this)" style="border-color:var(--amber-brd)"></div>
         </div>
       </div>
       <div class="sec-box k-box" style="padding:.5rem .7rem">
