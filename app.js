@@ -941,6 +941,7 @@ window.calc = function() {
   if ((!hasS1 && !hasS2) || !rows.length) {
     $('result-card').style.display = 'none';
     $('sum-bar').style.display = 'none';
+    if ($('save-card')) $('save-card').style.display = 'none';
     return;
   }
 
@@ -1323,6 +1324,7 @@ window.calc = function() {
   }
   $('concl').innerHTML = html;
   $('result-card').style.display = 'block';
+  if ($('save-card')) $('save-card').style.display = '';
 };
 
 // ── 荷主内訳アコーディオン ────────────────────────────────────
@@ -1749,6 +1751,7 @@ async function restoreSimData(data) {
   if (data.s2cbt) restoreCarrier('s2-c-bt', data.s2cbt);
   if (data.s2cbk) restoreCarrier('s2-c-bk', data.s2cbk);
   onCarrierChange();
+  onColoadChange();
 
   // AGENT
   if ($('sim-agent') && data.agent) { $('sim-agent').value = data.agent; onAgentChange(); }
