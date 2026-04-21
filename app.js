@@ -50,7 +50,7 @@ async function sbDelete(table, id) {
 }
 
 // ── State ─────────────────────────────────────────────────────
-var customers = [], allCosts = [], tsRates = [], agentRates = [];
+var customers = [], allCosts = [], tsRates = [], agentRates = [], coloadRates = [];
 var carriers = [];
 // スロット別コストマスター参照
 // スロット1（TK/KB/COLOAD/OLT対応）
@@ -130,7 +130,7 @@ window.showPage = function(id) {
   var idx = { sim: 0, cust: 1, cost: 2 }[id];
   if (idx !== undefined) document.querySelectorAll('.nb')[idx].classList.add('active');
   if (id === 'cust') renderCustTable();
-  if (id === 'cost') { renderCostTable(); renderAgentTable(); }
+  if (id === 'cost') { renderCostTable(); renderColoadTable(); renderAgentTable(); }
 };
 
 // ── Load ──────────────────────────────────────────────────────
@@ -139,10 +139,11 @@ async function loadAll() {
   $('conn-lbl').textContent = '接続中...';
 
   var tables = [
-    { name: 'customers',   order: 'name' },
-    { name: 'cost_master', order: 'carrier,container_type' },
-    { name: 'ts_rates',    order: 'destination' },
-    { name: 'agent_rates', order: 'agent_name,destination' }
+    { name: 'customers',    order: 'name' },
+    { name: 'cost_master',  order: 'carrier,container_type' },
+    { name: 'ts_rates',     order: 'destination' },
+    { name: 'agent_rates',  order: 'agent_name,destination' },
+    { name: 'coload_rates', order: 'name' }
   ];
 
   var results = {};
@@ -162,11 +163,12 @@ async function loadAll() {
   allCosts   = results['cost_master'];
   tsRates    = results['ts_rates'];
   agentRates = results['agent_rates'];
+  coloadRates = results['coload_rates'] || [];
   carriers   = [...new Set(allCosts.map(function(r) { return r.carrier; }))];
   var agentNames = [...new Set(agentRates.map(function(r) { return r.agent_name; }))];
 
   $('dot').className = 'dot ok';
-  $('conn-lbl').textContent = '接続済 — 顧客' + customers.length + '件 / 船社' + carriers.length + '社 / AGENT ' + agentNames.length + '社 / 仕向地' + tsRates.length + '港';
+  $('conn-lbl').textContent = '接続済 — 顧客' + customers.length + '件 / 船社' + carriers.length + '社 / CO-LOAD' + coloadRates.length + '社 / AGENT ' + agentNames.length + '社 / 仕向地' + tsRates.length + '港';
 
   // パターン選択UIの初期描画（船社リスト確定後に実行）
   onPatternChange();
@@ -197,6 +199,23 @@ async function loadAll() {
 
   calc();
 }
+
+// ── CO-LOAD業者変更 ───────────────────────────────────────────
+window.onColoadChange = function() {
+  [1, 2].forEach(function(s) {
+    var sel = $('s' + s + '-c-cl');
+    var badge = $('ci-s' + s + '-c-cl');
+    if (!sel || !badge) return;
+    var id = sel.value;
+    var rate = coloadRates.find(function(r) { return r.id === id; }) || null;
+    if (rate) {
+      badge.textContent = 'O/F $' + fmt(rate.of_usd,0) + ' + EFS $' + fmt(rate.efs_usd,0) + '/RT　ICS2 $' + fmt(rate.ics2_usd,0) + '/BL　CFS ¥' + fmt(rate.cfs_jpy) + ' THC ¥' + fmt(rate.thc_jpy) + ' DRS ¥' + fmt(rate.drs_jpy) + '/RT';
+    } else {
+      badge.textContent = '';
+    }
+  });
+  calc();
+};
 
 // ── パターン変更ハンドラ ──────────────────────────────────────
 window.onPatternChange = function() {
@@ -275,7 +294,17 @@ function renderSlotCarriers(slot, type) {
   } else if (type === 'KB') {
     html += carrierSelectHtml('s' + slot + '-c-k', '神戸 船社', 'var(--red)', 'var(--sur)', 'var(--red-brd)');
   } else if (type === 'COLOAD') {
-    html += carrierSelectHtml('s' + slot + '-c-cl', 'CO-LOAD 船社（コストマスターから選択）', 'var(--amber)', 'var(--sur)', 'var(--amber-brd)');
+    // CO-LOAD業者セレクト（coload_ratesテーブルから）
+    html += '<div style="margin-bottom:.5rem">';
+    html += '<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:.25rem">CO-LOAD 業者</div>';
+    html += '<select id="s' + slot + '-c-cl" onchange="onColoadChange()" style="padding:5px 8px;width:100%;border:1px solid var(--amber-brd);border-radius:var(--r);background:var(--sur);font-size:12px;font-family:var(--sans)">';
+    html += '<option value="">-- 選択 --</option>';
+    coloadRates.forEach(function(c) {
+      html += '<option value="' + c.id + '">' + c.name + '</option>';
+    });
+    html += '</select>';
+    html += '<div id="ci-s' + slot + '-c-cl" style="font-size:10px;color:var(--amber);margin-top:.2rem"></div>';
+    html += '</div>';
   } else if (type === 'OLT') {
     html += carrierSelectHtml('s' + slot + '-c-bt', '東京 船社（OLT後）', 'var(--acc)', 'var(--sur)', 'var(--acc-brd)');
     html += carrierSelectHtml('s' + slot + '-c-bk', '神戸 船社（OLT前）', 'var(--green)', 'var(--sur)', 'var(--green-brd)');
@@ -768,7 +797,7 @@ window.calc = function() {
   // スロット別コスト計算ヘルパー
   // 戻り値: { cost, prof, rev, ref, cntrDetail, oltForSlot, totalTs, agentCost, totalDel, totalMisc }
   function calcSlot(slotRows, baseKey, type, cT20, cT40, cK20, cK40, sBT20, sBT40, sBK20, sBK40, sCL20, sCL40,
-                    panelT20, panelT40, panelK20, panelK40, oltApply) {
+                    panelT20, panelT40, panelK20, panelK40, oltApply, slotNum) {
     var tR = slotRows.filter(function(r){return r[baseKey]==='東京';});
     var kR = slotRows.filter(function(r){return r[baseKey]==='神戸';});
     var tM = tR.reduce(function(s,r){return s+r.vol;},0);
@@ -822,14 +851,25 @@ window.calc = function() {
       cntrDetail = [{lbl:'神戸 20FT×'+panelK20,ct:dK20,clr:'#FFF0F0'},{lbl:'神戸 40HC×'+panelK40,ct:dK40,clr:'#FFE8E8'}];
 
     } else if (type === 'COLOAD') {
-      // CO-LOAD：コンテナコストなし、固定レートで計算
-      // 売上はそのまま、コストはCO-LOADレート × 全荷主物量
-      // CO-LOADコスト = (70+15)*fx + (4000+1000+300) per RT + 25*fx per BL
-      var blCount = slotRows.length; // 1荷主=1BL概算
-      var coloadCostPerRt = (70 + 15) * fx + (4000 + 1000 + 300);
-      var coloadCostPerBl = 25 * fx;
+      // CO-LOAD：coload_ratesマスターからレート取得
+      var clSelEl = $('s' + slotNum + '-c-cl');
+      var clId = clSelEl ? clSelEl.value : '';
+      var clRate = coloadRates.find(function(r) { return r.id === clId; }) || null;
+      var ofUsd   = clRate ? nv(clRate.of_usd)  : 70;
+      var efsUsd  = clRate ? nv(clRate.efs_usd) : 15;
+      var ics2Usd = clRate ? nv(clRate.ics2_usd): 25;
+      var cfsJpy  = clRate ? nv(clRate.cfs_jpy) : 4000;
+      var thcJpy  = clRate ? nv(clRate.thc_jpy) : 1000;
+      var drsJpy  = clRate ? nv(clRate.drs_jpy) : 300;
+      var blCount = slotRows.length;
+      var coloadCostPerRt = (ofUsd + efsUsd) * fx + (cfsJpy + thcJpy + drsJpy);
+      var coloadCostPerBl = ics2Usd * fx;
       cntrCost = allM * coloadCostPerRt + blCount * coloadCostPerBl;
-      cntrDetail = [{lbl:'CO-LOAD費用（' + fmt(allM,1) + 'm³ × ¥' + fmt(coloadCostPerRt) + '/RT + ' + blCount + 'BL × ¥' + fmt(coloadCostPerBl) + '）', ct:{total:cntrCost,of:0,fix:0,van:0,lash:0,sur:0}, clr:'#FEF7E6'}];
+      var clName = clRate ? clRate.name : '未選択';
+      cntrDetail = [{
+        lbl: 'CO-LOAD [' + clName + ']（' + fmt(allM,1) + 'm³ × ¥' + fmt(coloadCostPerRt) + '/RT + ' + blCount + 'BL × ¥' + fmt(coloadCostPerBl) + '）',
+        ct: { total: cntrCost, of: 0, fix: 0, van: 0, lash: 0, sur: 0 }, clr: '#FEF7E6'
+      }];
 
     } else if (type === 'OLT') {
       // OLT：東京はsBT、神戸はsBK
@@ -914,11 +954,11 @@ window.calc = function() {
   // スロット1計算
   var r1 = calcSlot(rowsA, 'baseA', t1,
     s1T20, s1T40, s1K20, s1K40, selBT20, selBT40, selBK20, selBK40, selCL20, selCL40,
-    caT20, caT40, caK20, caK40, t1==='TK'?oltApplyA:(t1==='OLT'?oltApplyB:false));
+    caT20, caT40, caK20, caK40, t1==='TK'?oltApplyA:(t1==='OLT'?oltApplyB:false), 1);
   // スロット2計算
   var r2 = calcSlot(rowsB, 'baseB', t2,
     s2T20, s2T40, s2K20, s2K40, sel2BT20, sel2BT40, sel2BK20, sel2BK40, sel2CL20, sel2CL40,
-    cbT20, cbT40, cbK20, cbK40, t2==='TK'?oltApplyA:(t2==='OLT'?oltApplyB:false));
+    cbT20, cbT40, cbK20, cbK40, t2==='TK'?oltApplyA:(t2==='OLT'?oltApplyB:false), 2);
 
   // 後方互換変数（比較テーブル・det-a/b等で使用）
   var costA = r1.cost, profA = r1.prof, totalRevA = r1.rev, refA = r1.ref;
@@ -1436,6 +1476,75 @@ window.delCostRow = async function(id) {
   var r = await sbDelete('cost_master', id);
   if (r.error) { toast('削除失敗: ' + r.error.message, 'err'); return; }
   toast('削除しました'); await loadAll(); renderCostTable();
+};
+
+// ── CO-LOAD CRUD ─────────────────────────────────────────────
+function renderColoadTable() {
+  var tb = $('cltb');
+  if (!tb) return;
+  if (!coloadRates.length) { tb.innerHTML = '<tr><td colspan="9" class="loading">CO-LOAD業者が登録されていません</td></tr>'; return; }
+  var nz = function(v, pre) { return nv(v) ? (pre || '') + fmt(v, nv(v)%1!==0?2:0) : '-'; };
+  tb.innerHTML = coloadRates.map(function(c) {
+    return '<tr>' +
+      '<td><strong style="color:var(--amber)">' + c.name + '</strong></td>' +
+      '<td style="color:var(--amber)">$' + fmt(c.of_usd,0) + '</td>' +
+      '<td style="color:var(--amber)">$' + fmt(c.efs_usd,0) + '</td>' +
+      '<td style="color:var(--amber)">$' + fmt(c.ics2_usd,0) + '/BL</td>' +
+      '<td>¥' + fmt(c.cfs_jpy) + '</td>' +
+      '<td>¥' + fmt(c.thc_jpy) + '</td>' +
+      '<td>¥' + fmt(c.drs_jpy) + '</td>' +
+      '<td style="font-size:11px;color:var(--tx3)">' + (c.memo || '-') + '</td>' +
+      '<td style="white-space:nowrap"><button class="btn btn-sm" style="margin-right:4px" onclick="editCoload(\'' + c.id + '\')">編集</button><button class="delbtn" onclick="delCoload(\'' + c.id + '\')">削除</button></td></tr>';
+  }).join('');
+}
+
+window.openCLM = function(c) {
+  c = c || null;
+  $('clm-title').textContent = c ? 'CO-LOADコストを編集' : 'CO-LOADコストを追加';
+  $('clm-id').value = c ? c.id : '';
+  $('clm-name').value = c ? c.name : '';
+  $('clm-memo').value = c ? (c.memo || '') : '';
+  var def = {
+    'clm-of':  c ? c.of_usd  : 70,
+    'clm-efs': c ? c.efs_usd : 15,
+    'clm-ics2':c ? c.ics2_usd: 25,
+    'clm-cfs': c ? c.cfs_jpy : 4000,
+    'clm-thc': c ? c.thc_jpy : 1000,
+    'clm-drs': c ? c.drs_jpy : 300
+  };
+  Object.keys(def).forEach(function(id) {
+    var el = $(id); if (!el) return;
+    el.value = fmt(nv(def[id]));
+  });
+  $('clm-modal').style.display = 'block';
+};
+window.closeCLM = function() { $('clm-modal').style.display = 'none'; };
+window.editCoload = function(id) { coloadRates.forEach(function(c) { if (c.id === id) openCLM(c); }); };
+window.saveCoload = async function() {
+  var name = $('clm-name').value.trim();
+  if (!name) { toast('業者名を入力してください', 'err'); return; }
+  var g = function(id) { return nv($(id).value); };
+  var row = {
+    name: name,
+    of_usd:   g('clm-of'),
+    efs_usd:  g('clm-efs'),
+    ics2_usd: g('clm-ics2'),
+    cfs_jpy:  g('clm-cfs'),
+    thc_jpy:  g('clm-thc'),
+    drs_jpy:  g('clm-drs'),
+    memo: $('clm-memo').value,
+    updated_at: new Date().toISOString()
+  };
+  var id = $('clm-id').value;
+  var r = id ? await sbUpdate('coload_rates', id, row) : await sbInsert('coload_rates', row);
+  if (r.error) { toast('保存失敗: ' + r.error.message, 'err'); return; }
+  toast('保存しました'); closeCLM(); await loadAll(); renderColoadTable();
+};
+window.delCoload = async function(id) {
+  if (!confirm('削除しますか？')) return;
+  var r = await sbDelete('coload_rates', id);
+  if (r.error) { toast('削除失敗: ' + r.error.message, 'err'); return; }
+  toast('削除しました'); await loadAll(); renderColoadTable();
 };
 
 // ── AGENT CRUD ────────────────────────────────────────────────

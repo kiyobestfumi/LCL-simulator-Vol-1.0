@@ -558,6 +558,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <h2 style="font-size:16px;font-weight:500">コストマスター</h2>
     <div style="display:flex;gap:8px">
       <button class="btn btn-a" onclick="openKM()">＋ 船社を追加</button>
+      <button class="btn" style="background:var(--amber-bg);border-color:var(--amber-brd);color:var(--amber)" onclick="openCLM()">＋ CO-LOADを追加</button>
       <button class="btn" style="background:var(--purple-bg);border-color:var(--purple-brd);color:var(--purple)" onclick="openAM()">＋ AGENTを追加</button>
     </div>
   </div>
@@ -576,7 +577,25 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         <th class="gh">段積不可</th><th class="gh">パレタイズ</th>
         <th></th>
       </tr></thead>
-      <tbody id="ktb"><tr><td colspan="25" class="loading">読み込み中...</td></tr></tbody>
+      <tbody id="ktb"><tr><td colspan="26" class="loading">読み込み中...</td></tr></tbody>
+    </table></div>
+  </div>
+  <!-- CO-LOADマスター -->
+  <div class="card">
+    <div class="ct" style="color:var(--amber)">CO-LOAD コストマスター</div>
+    <div class="tw"><table class="mt">
+      <thead><tr>
+        <th>業者名</th>
+        <th class="rh">O/F USD/RT</th>
+        <th class="rh">EFS USD/RT</th>
+        <th class="rh">ICS2 USD/BL</th>
+        <th class="kh">CFS JPY/RT</th>
+        <th class="kh">THC JPY/RT</th>
+        <th class="kh">DRS JPY/RT</th>
+        <th>メモ</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="cltb"><tr><td colspan="9" class="loading">読み込み中...</td></tr></tbody>
     </table></div>
   </div>
   <div class="card">
@@ -721,6 +740,53 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div class="brow">
       <button class="btn" onclick="closeKM()">キャンセル</button>
       <button class="btn btn-p" onclick="saveCost()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- CO-LOAD MODAL -->
+<div class="modal-bg" id="clm-modal">
+  <div class="modal-box" style="max-width:640px">
+    <h2 style="font-size:15px;font-weight:500;margin-bottom:.4rem" id="clm-title">CO-LOADコストを追加</h2>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:1rem">CO-LOAD業者ごとに買値レートを登録します。スロット選択でCO-LOADを選ぶと自動適用されます。</p>
+    <input type="hidden" id="clm-id">
+    <div class="g2" style="margin-bottom:.6rem">
+      <div class="f"><label>業者名 *</label><input type="text" id="clm-name" placeholder="例: セイノーロジックス"></div>
+      <div class="f"><label>メモ</label><input type="text" id="clm-memo" placeholder="備考など"></div>
+    </div>
+    <div class="cs" style="color:var(--amber)">買値コスト</div>
+    <div class="g3" style="margin-bottom:.6rem">
+      <div class="f" style="background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--amber);font-weight:700">O/F USD/RT</label>
+        <input type="text" id="clm-of" value="70" oninput="fmtI(this)" style="border-color:var(--amber-brd);margin-top:4px">
+      </div>
+      <div class="f" style="background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--amber);font-weight:700">EFS USD/RT</label>
+        <input type="text" id="clm-efs" value="15" oninput="fmtI(this)" style="border-color:var(--amber-brd);margin-top:4px">
+      </div>
+      <div class="f" style="background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--amber);font-weight:700">ICS2 USD/BL</label>
+        <input type="text" id="clm-ics2" value="25" oninput="fmtI(this)" style="border-color:var(--amber-brd);margin-top:4px">
+      </div>
+      <div class="f" style="background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--acc);font-weight:700">CFS JPY/RT</label>
+        <input type="text" id="clm-cfs" value="4,000" oninput="fmtI(this)" style="border-color:var(--acc-brd);margin-top:4px">
+      </div>
+      <div class="f" style="background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--acc);font-weight:700">THC JPY/RT</label>
+        <input type="text" id="clm-thc" value="1,000" oninput="fmtI(this)" style="border-color:var(--acc-brd);margin-top:4px">
+      </div>
+      <div class="f" style="background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.65rem">
+        <label style="color:var(--acc);font-weight:700">DRS JPY/RT</label>
+        <input type="text" id="clm-drs" value="300" oninput="fmtI(this)" style="border-color:var(--acc-brd);margin-top:4px">
+      </div>
+    </div>
+    <div style="background:var(--sur2);border-radius:var(--r);padding:.6rem .9rem;margin-bottom:1.2rem;font-size:11px;color:var(--tx2)">
+      コスト計算式：（O/F + EFS）× 為替 × m³ + （CFS + THC + DRS）× m³ + ICS2 × 為替 × BL数
+    </div>
+    <div class="brow">
+      <button class="btn" onclick="closeCLM()">キャンセル</button>
+      <button class="btn" style="background:var(--amber);color:#fff;border-color:var(--amber)" onclick="saveCoload()">保存</button>
     </div>
   </div>
 </div>
