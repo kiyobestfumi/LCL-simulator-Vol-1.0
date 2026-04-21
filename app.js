@@ -139,11 +139,10 @@ async function loadAll() {
   $('conn-lbl').textContent = '接続中...';
 
   var tables = [
-    { name: 'customers',    order: 'name' },
-    { name: 'cost_master',  order: 'carrier,container_type' },
-    { name: 'ts_rates',     order: 'destination' },
-    { name: 'agent_rates',  order: 'agent_name,destination' },
-    { name: 'coload_rates', order: 'name' }
+    { name: 'customers',   order: 'name' },
+    { name: 'cost_master', order: 'carrier,container_type' },
+    { name: 'ts_rates',    order: 'destination' },
+    { name: 'agent_rates', order: 'agent_name,destination' }
   ];
 
   var results = {};
@@ -152,11 +151,6 @@ async function loadAll() {
     $('conn-lbl').textContent = '読込中: ' + t.name + '...';
     var r = await sbGet(t.name, t.order);
     if (r.error) {
-      // coload_ratesはテーブル未作成の場合があるのでスキップ
-      if (t.name === 'coload_rates') {
-        results[t.name] = [];
-        continue;
-      }
       $('dot').className = 'dot err';
       $('conn-lbl').textContent = 'エラー [' + t.name + ']: ' + r.error.message;
       return;
@@ -164,11 +158,19 @@ async function loadAll() {
     results[t.name] = r.data;
   }
 
+  // coload_ratesは別途取得（テーブル未作成でも止まらない）
+  try {
+    var clRes = await sbGet('coload_rates', 'name');
+    coloadRates = (!clRes.error && clRes.data) ? clRes.data : [];
+  } catch(e) {
+    coloadRates = [];
+  }
+
   customers  = results['customers'];
   allCosts   = results['cost_master'];
   tsRates    = results['ts_rates'];
   agentRates = results['agent_rates'];
-  coloadRates = results['coload_rates'] || [];
+  // coloadRatesは上記try/catchで設定済み
   carriers   = [...new Set(allCosts.map(function(r) { return r.carrier; }))];
   var agentNames = [...new Set(agentRates.map(function(r) { return r.agent_name; }))];
 
