@@ -925,9 +925,19 @@ window.calc = function() {
   var s2T20 = t2==='TK'?sel2T20:null, s2T40 = t2==='TK'?sel2T40:null;
   var s2K20 = (t2==='TK'||t2==='KB')?sel2K20:null, s2K40 = (t2==='TK'||t2==='KB')?sel2K40:null;
 
-  // 船社チェック（いずれかのスロットで何か選択されていればOK）
-  var hasS1 = s1T20||s1T40||s1K20||s1K40||selCL20||selBT20||selBK20;
-  var hasS2 = s2T20||s2T40||s2K20||s2K40||sel2CL20||sel2BT20||sel2BK20;
+  // 船社チェック（CO-LOADはcoload_ratesから選ぶため別扱い）
+  function slotHasCarrier(type, sT20, sT40, sK20, sK40, sBT20, sBT40, sBK20, sBK40, slotN) {
+    if (type === 'COLOAD') {
+      var clSel = $('s' + slotN + '-c-cl');
+      return !!(clSel && clSel.value);
+    }
+    if (type === 'TK') return !!(sT20||sT40||sK20||sK40);
+    if (type === 'KB') return !!(sK20||sK40);
+    if (type === 'OLT') return !!(sBT20||sBT40||sBK20||sBK40);
+    return false;
+  }
+  var hasS1 = slotHasCarrier(t1, s1T20, s1T40, s1K20, s1K40, selBT20, selBT40, selBK20, selBK40, 1);
+  var hasS2 = slotHasCarrier(t2, s2T20, s2T40, s2K20, s2K40, sel2BT20, sel2BT40, sel2BK20, sel2BK40, 2);
   if ((!hasS1 && !hasS2) || !rows.length) {
     $('result-card').style.display = 'none';
     $('sum-bar').style.display = 'none';
