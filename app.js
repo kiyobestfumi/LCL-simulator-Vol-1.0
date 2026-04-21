@@ -152,6 +152,11 @@ async function loadAll() {
     $('conn-lbl').textContent = '読込中: ' + t.name + '...';
     var r = await sbGet(t.name, t.order);
     if (r.error) {
+      // coload_ratesはテーブル未作成の場合があるのでスキップ
+      if (t.name === 'coload_rates') {
+        results[t.name] = [];
+        continue;
+      }
       $('dot').className = 'dot err';
       $('conn-lbl').textContent = 'エラー [' + t.name + ']: ' + r.error.message;
       return;
