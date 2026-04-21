@@ -761,8 +761,11 @@ window.calc = function() {
   var tsAT40 = allM > 0 ? tsM * (tM40 / allM) : 0;
   var tsAK20 = allM > 0 ? tsM * (kM20 / allM) : 0;
   var tsAK40 = allM > 0 ? tsM * (kM40 / allM) : 0;
-  var tsBT20 = allM > 0 ? tsM * (bM20 / allM) : 0;
-  var tsBT40 = allM > 0 ? tsM * (bM40 / allM) : 0;
+  // パターンB T/S按分
+  var tsBT20 = allMB > 0 ? tsMB * (btM20 / allMB) : 0;
+  var tsBT40 = allMB > 0 ? tsMB * (btM40 / allMB) : 0;
+  var tsBK20 = allMB > 0 ? tsMB * (bkM20 / allMB) : 0;
+  var tsBK40 = allMB > 0 ? tsMB * (bkM40 / allMB) : 0;
 
   dA.push(cntrBlock('東京 20FT × ' + caT20 + '本 [' + tCarrier + ']', caT20, cAT20, refAT20, nv(selT20 ? selT20.refund_per_rt : 0), '#F0F5FF', tM20, tsAT20));
   dA.push(cntrBlock('東京 40HC × ' + caT40 + '本 [' + tCarrier + ']', caT40, cAT40, refAT40, nv(selT40 ? selT40.refund_per_rt : 0), '#EAF5FF', tM40, tsAT40));
@@ -800,11 +803,6 @@ window.calc = function() {
   $('det-a').innerHTML = dA.join('');
 
   // ── 詳細B：コンテナ別コスト内訳 ──────────────────────────────
-  var tsBT20 = allM > 0 ? tsM * (btM20 / allM) : 0;
-  var tsBT40 = allM > 0 ? tsM * (btM40 / allM) : 0;
-  var tsBK20 = allM > 0 ? tsM * (bkM20 / allM) : 0;
-  var tsBK40 = allM > 0 ? tsM * (bkM40 / allM) : 0;
-
   var dB = [];
   dB.push(cntrBlock('東京 20FT × ' + cbT20 + '本 [' + btCarrier + ']', cbT20, cBT20, refBT20, nv(selBT20 ? selBT20.refund_per_rt : 0), '#F0F5FF', btM20, tsBT20));
   dB.push(cntrBlock('東京 40HC × ' + cbT40 + '本 [' + btCarrier + ']', cbT40, cBT40, refBT40, nv(selBT40 ? selBT40.refund_per_rt : 0), '#EAF5FF', btM40, tsBT40));
@@ -865,30 +863,161 @@ window.calc = function() {
   if ($('rsub-a')) $('rsub-a').textContent = '東京: 20FT×' + caT20 + ' / 40HC×' + caT40 + '　神戸: 20FT×' + caK20 + ' / 40HC×' + caK40 + '　（' + rowsA.length + '顧客）';
   if ($('rsub-b')) $('rsub-b').textContent = 'B東京: 20FT×' + cbT20 + '/40HC×' + cbT40 + '　B神戸: 20FT×' + cbK20 + '/40HC×' + cbK40 + '　（' + rowsB.length + '顧客）';
 
-  ['a','b'].forEach(function(p) {
-    var prof = p === 'a' ? profA : profB;
-    var cost = p === 'a' ? costA : costB;
-    var rev  = p === 'a' ? totalRevA : totalRevB;
-    $('rv-' + p).textContent = fmtY(rev);
-    $('co-' + p).textContent = fmtY(cost);
-    var ep = $('pr-' + p); ep.textContent = fmtY(prof); ep.className = 'mv ' + (prof >= 0 ? 'pos' : 'neg');
-    $('badge-' + p).innerHTML = '';
-    $('rc-' + p).classList.remove('winner');
-  });
+  // ── 比較テーブル生成 ──────────────────────────────────────────
+  var winner = profA > profB ? 'A' : profB > profA ? 'B' : '-';
 
+  // ヘッダーのrsub更新
+  if ($('rsub-a')) $('rsub-a').textContent = '東京: 20FT×' + caT20 + '/40HC×' + caT40 + '　神戸: 20FT×' + caK20 + '/40HC×' + caK40;
+  if ($('rsub-b')) $('rsub-b').textContent = 'B東京: 20FT×' + cbT20 + '/40HC×' + cbT40 + '　B神戸: 20FT×' + cbK20 + '/40HC×' + cbK40;
+
+  // テーブルヘッダーの色設定
+  var thA = $('th-a'), thB = $('th-b');
+  if (thA) { thA.style.color = winner === 'A' ? 'var(--acc)' : 'var(--tx)'; thA.style.background = winner === 'A' ? 'var(--acc-bg)' : ''; }
+  if (thB) { thB.style.color = winner === 'B' ? 'var(--acc)' : 'var(--tx)'; thB.style.background = winner === 'B' ? 'var(--acc-bg)' : ''; }
+
+  // ヘルパー
+  function cmpRow(label, vA, vB, cls, indent) {
+    var dv = vA - vB;
+    var diffCls = Math.abs(dv) < 1 ? 'neu' : (dv > 0 ? 'adv' : 'dis');
+    var diffTxt = Math.abs(dv) < 1 ? '─' : (dv > 0 ? '+' : '') + fmt(dv);
+    var indentStyle = indent ? 'padding-left:20px;color:var(--tx2)' : '';
+    return '<tr>' +
+      '<td style="' + indentStyle + '">' + label + '</td>' +
+      '<td class="cv ' + (cls||'') + '">' + (vA === null ? '─' : fmtY(vA)) + '</td>' +
+      '<td class="cv ' + (cls||'') + '">' + (vB === null ? '─' : fmtY(vB)) + '</td>' +
+      '<td class="diff ' + diffCls + '">' + diffTxt + '</td>' +
+    '</tr>';
+  }
+  function secRow(label) {
+    return '<tr class="cmp-section"><td colspan="4">' + label + '</td></tr>';
+  }
+  function nullIfZero(v) { return v === 0 ? null : v; }
+
+  var rows_html = [];
+
+  // ── コンテナコスト ──
+  rows_html.push(secRow('コンテナコスト'));
+  // 東京
+  if (caT20 > 0 || cbT20 > 0)
+    rows_html.push(cmpRow('東京 20FT　A:×' + caT20 + '本 / B:×' + cbT20 + '本',
+      caT20 > 0 ? cAT20.total : null, cbT20 > 0 ? cBT20.total : null, '', true));
+  if (caT40 > 0 || cbT40 > 0)
+    rows_html.push(cmpRow('東京 40HC　A:×' + caT40 + '本 / B:×' + cbT40 + '本',
+      caT40 > 0 ? cAT40.total : null, cbT40 > 0 ? cBT40.total : null, '', true));
+  // 神戸
+  if (caK20 > 0 || cbK20 > 0)
+    rows_html.push(cmpRow('神戸 20FT　A:×' + caK20 + '本 / B:×' + cbK20 + '本',
+      caK20 > 0 ? cAK20.total : null, cbK20 > 0 ? cBK20.total : null, '', true));
+  if (caK40 > 0 || cbK40 > 0)
+    rows_html.push(cmpRow('神戸 40HC　A:×' + caK40 + '本 / B:×' + cbK40 + '本',
+      caK40 > 0 ? cAK40.total : null, cbK40 > 0 ? cBK40.total : null, '', true));
+
+  var cntrA = cAT20.total + cAT40.total + cAK20.total + cAK40.total;
+  var cntrB = cBT20.total + cBT40.total + cBK20.total + cBK40.total;
+  rows_html.push(cmpRow('　コンテナコスト 計', cntrA, cntrB, ''));
+
+  // ── OLT費用 ──
+  var kRowsAol = rowsA.filter(function(r){return r.base==='神戸';});
+  var kMAol = kRowsAol.reduce(function(s,r){return s+r.vol;},0);
+  var kMBol = rowsB.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
+  var hasOltSection = (oltApplyA && kMAol > 0) || (oltApplyB && kMBol > 0);
+  if (hasOltSection) {
+    rows_html.push(secRow('OLT費用（神戸→東京）'));
+    var truckA = oltApplyA && kMAol > 0 ? oltA.truck : null;
+    var truckB = oltApplyB && kMBol > 0 ? oltB.truck : null;
+    if (truckA !== null || truckB !== null)
+      rows_html.push(cmpRow('トラック費用', truckA, truckB, 'olt', true));
+    var handA = oltApplyA && kMAol > 0 ? oltA.handling : null;
+    var handB = oltApplyB && kMBol > 0 ? oltB.handling : null;
+    if (handA !== null || handB !== null)
+      rows_html.push(cmpRow('入出庫料（¥' + fmt(nv($('olt-handling').value)) + '/RT）', handA, handB, 'olt', true));
+    rows_html.push(cmpRow('　OLT合計', oltApplyA&&kMAol>0?oltForA:null, oltApplyB&&kMBol>0?oltForB:null, 'olt'));
+  }
+
+  // ── T/S・AGENT ──
+  if (totalTsA !== 0 || totalTsB !== 0) {
+    rows_html.push(secRow('T/S・AGENT'));
+    if (totalTsA !== 0 || totalTsB !== 0)
+      rows_html.push(cmpRow('T/Sコスト', nullIfZero(totalTsA), nullIfZero(totalTsB), 'tsc', true));
+    if (agentCostA !== 0 || agentCostB !== 0)
+      rows_html.push(cmpRow('AGENTコスト', nullIfZero(agentCostA), nullIfZero(agentCostB), 'tsc', true));
+  }
+
+  // ── その他コスト ──
+  rows_html.push(secRow('その他コスト'));
+  rows_html.push(cmpRow('現地Delivery', totalDelA, totalDelB, '', true));
+  if (totalMiscA > 0 || totalMiscB > 0)
+    rows_html.push(cmpRow('段積不可/パレタイズ', totalMiscA, totalMiscB, '', true));
+
+  // ── 総コスト ──
+  rows_html.push('<tr class="cmp-total">' +
+    '<td><strong>総コスト</strong></td>' +
+    '<td class="cv"><strong>' + fmtY(costA) + '</strong></td>' +
+    '<td class="cv"><strong>' + fmtY(costB) + '</strong></td>' +
+    '<td class="diff ' + (costA-costB < -1 ? 'adv' : costA-costB > 1 ? 'dis' : 'neu') + '">' + (Math.abs(costA-costB)<1?'─':(costA-costB>0?'+':'')+fmt(costA-costB)) + '</td>' +
+  '</tr>');
+
+  // ── 売上・REFUND ──
+  rows_html.push(secRow('売上・REFUND'));
+  rows_html.push(cmpRow('総売上', totalRevA, totalRevB, ''));
+  if (refA > 0 || refB > 0)
+    rows_html.push(cmpRow('REFUND', refA, refB, 'ref'));
+
+  // ── 利益（REFUND込み） ──
+  var profDiff = profA - profB;
+  rows_html.push('<tr class="cmp-profit">' +
+    '<td><strong>利益（REFUND込）</strong></td>' +
+    '<td class="cv ' + (profA >= 0 ? 'pos' : 'neg') + '" style="font-size:14px"><strong>' + fmtY(profA) + '</strong>' + (winner==='A'?' <span class="wbadge">推奨</span>':'') + '</td>' +
+    '<td class="cv ' + (profB >= 0 ? 'pos' : 'neg') + '" style="font-size:14px"><strong>' + fmtY(profB) + '</strong>' + (winner==='B'?' <span class="wbadge">推奨</span>':'') + '</td>' +
+    '<td class="diff ' + (Math.abs(profDiff)<1?'neu':profDiff>0?'adv':'dis') + '" style="font-size:12px">' +
+      (Math.abs(profDiff)<1 ? '同等' : (profDiff>0?'+':'')+fmt(profDiff)) +
+    '</td>' +
+  '</tr>');
+
+  $('cmp-body').innerHTML = rows_html.join('');
+
+  // ── badge・rc（後方互換） ──
+  ['a','b'].forEach(function(p) {
+    $('badge-' + p).innerHTML = '';
+    var rc = $('rc-' + p); if (rc) rc.classList.remove('winner');
+  });
+  if (winner === 'A') { $('badge-a').innerHTML = '<span class="wbadge">推奨</span>'; if($('rc-a')) $('rc-a').classList.add('winner'); }
+  if (winner === 'B') { $('badge-b').innerHTML = '<span class="wbadge">推奨</span>'; if($('rc-b')) $('rc-b').classList.add('winner'); }
+
+  // ── 旧id更新（後方互換：rv/co/pr） ──
+  if ($('rv-a')) $('rv-a').textContent = fmtY(totalRevA);
+  if ($('rv-b')) $('rv-b').textContent = fmtY(totalRevB);
+  if ($('co-a')) $('co-a').textContent = fmtY(costA);
+  if ($('co-b')) $('co-b').textContent = fmtY(costB);
+  var epa = $('pr-a'); if (epa) { epa.textContent = fmtY(profA); epa.className = 'mv '+(profA>=0?'pos':'neg'); }
+  var epb = $('pr-b'); if (epb) { epb.textContent = fmtY(profB); epb.className = 'mv '+(profB>=0?'pos':'neg'); }
+
+  // ── 結論バナー ──
   var diff = Math.abs(profA - profB);
   var html = '';
   if (profA > profB) {
-    $('badge-a').innerHTML = '<span class="wbadge">推奨</span>'; $('rc-a').classList.add('winner');
-    html = '<div class="cbox ok"><p>✅ <strong>パターンA が有利</strong>（差額：' + fmtY(diff) + '）<br>REFUND ' + fmtY(refA) + (totalTsA !== 0 ? ' / T/S ' + fmtY(totalTsA) : '') + '</p></div>';
+    html = '<div class="cbox ok"><p>✅ <strong>パターンA が有利</strong>（差額：' + fmtY(diff) + '）' +
+      (refA>0?' REFUND '+fmtY(refA):'') + (totalTsA!==0?' / T/S '+fmtY(totalTsA):'') +
+      '<br><span style="font-size:11px">OLT費用なし or コンテナ効率が上回る</span></p></div>';
   } else if (profB > profA) {
-    $('badge-b').innerHTML = '<span class="wbadge">推奨</span>'; $('rc-b').classList.add('winner');
-    html = '<div class="cbox ok"><p>✅ <strong>パターンB が有利</strong>（差額：' + fmtY(diff) + '）<br>REFUND ' + fmtY(refB) + (totalTsB !== 0 ? ' / T/S ' + fmtY(totalTsB) : '') + '</p></div>';
+    html = '<div class="cbox ok"><p>✅ <strong>パターンB が有利</strong>（差額：' + fmtY(diff) + '）' +
+      (refB>0?' REFUND '+fmtY(refB):'') + (totalTsB!==0?' / T/S '+fmtY(totalTsB):'') +
+      '<br><span style="font-size:11px">OLT費用（' + fmtY(oltForB) + '）を含めても合算効果が上回る</span></p></div>';
   } else {
     html = '<div class="cbox ok"><p>⚖️ パターンA・Bは同等の利益です。</p></div>';
   }
   $('concl').innerHTML = html;
   $('result-card').style.display = 'block';
+};
+
+// ── 荷主内訳アコーディオン ────────────────────────────────────
+window.toggleCbDetail = function() {
+  var d = $('cb-detail');
+  var btn = $('cb-toggle-btn');
+  if (!d) return;
+  var open = d.style.display !== 'none';
+  d.style.display = open ? 'none' : '';
+  btn.textContent = open ? '▶ 荷主内訳を表示' : '▼ 荷主内訳を閉じる';
 };
 
 // ── 顧客マスター CRUD ─────────────────────────────────────────

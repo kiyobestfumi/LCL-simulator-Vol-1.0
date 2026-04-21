@@ -143,6 +143,23 @@ table.mt tbody tr:hover td{background:var(--sur2)}
 .sec-lbl.t{color:var(--blue)}.sec-lbl.k{color:var(--red)}
 input[type=number]{-moz-appearance:textfield}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+/* 比較テーブル */
+#cmp-table tbody tr td{padding:5px 10px;border-bottom:1px solid var(--brd);vertical-align:middle}
+#cmp-table tbody tr:last-child td{border-bottom:none}
+#cmp-table tbody tr:hover td{background:var(--sur2)}
+#cmp-table tbody tr.cmp-section td{background:var(--sur2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);padding:4px 10px;border-bottom:1px solid var(--brd2)}
+#cmp-table tbody tr.cmp-total td{background:var(--sur2);font-weight:700;border-top:2px solid var(--brd2)}
+#cmp-table tbody tr.cmp-profit td{background:var(--sur);border-top:2px solid var(--tx)}
+#cmp-table .cv{font-family:var(--mono);font-size:12px;text-align:right;white-space:nowrap}
+#cmp-table .cv.pos{color:var(--acc);font-weight:600}
+#cmp-table .cv.neg{color:var(--red);font-weight:600}
+#cmp-table .cv.dim{color:var(--tx3)}
+#cmp-table .cv.olt{color:var(--blue)}
+#cmp-table .cv.ref{color:var(--amber)}
+#cmp-table .diff{font-family:var(--mono);font-size:11px;text-align:right;white-space:nowrap}
+#cmp-table .diff.adv{color:var(--acc);font-weight:700}
+#cmp-table .diff.dis{color:var(--red)}
+#cmp-table .diff.neu{color:var(--tx3)}
 </style>
 </head>
 <body>
@@ -414,31 +431,52 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 
   <div class="card" id="result-card" style="display:none">
     <div class="ct">パターン比較結果</div>
-    <div class="rg">
-      <div class="rc" id="rc-a">
-        <h3>パターンA <span id="badge-a"></span></h3>
-        <div class="rsub" id="rsub-a">東京・神戸 拠点別仕立て</div>
-        <div id="det-a"></div>
-        <div class="mi">
-          <div class="mb"><div class="ml">総売上</div><div class="mv" id="rv-a">-</div></div>
-          <div class="mb"><div class="ml">総コスト</div><div class="mv" id="co-a">-</div></div>
+
+    <!-- 比較テーブル -->
+    <div style="overflow-x:auto">
+      <table id="cmp-table" style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);width:38%">項目</th>
+            <th id="th-a" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;width:27%">パターンA <span id="badge-a"></span></th>
+            <th id="th-b" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;width:27%">パターンB <span id="badge-b"></span></th>
+            <th style="padding:7px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--tx3);border-bottom:2px solid var(--brd);text-align:right;width:8%">差額A-B</th>
+          </tr>
+          <tr>
+            <td style="padding:2px 10px 6px;font-size:10px;color:var(--tx3)" id="rsub-label"></td>
+            <td style="padding:2px 12px 6px;font-size:10px;color:var(--blue);text-align:right" id="rsub-a"></td>
+            <td style="padding:2px 12px 6px;font-size:10px;color:var(--acc);text-align:right" id="rsub-b"></td>
+            <td></td>
+          </tr>
+        </thead>
+        <tbody id="cmp-body"></tbody>
+      </table>
+    </div>
+
+    <!-- 結論バナー -->
+    <div id="concl" style="margin-top:.75rem"></div>
+
+    <!-- 荷主内訳アコーディオン -->
+    <div style="margin-top:.75rem">
+      <button onclick="toggleCbDetail()" style="font-family:var(--sans);font-size:12px;color:var(--tx2);border:1px solid var(--brd2);background:var(--sur2);border-radius:var(--r);padding:4px 14px;cursor:pointer" id="cb-toggle-btn">▶ 荷主内訳を表示</button>
+      <div id="cb-detail" style="display:none;margin-top:.6rem">
+        <div class="rg">
+          <div class="rc" id="rc-a">
+            <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem">パターンA 荷主内訳</div>
+            <div class="cb-wrap" id="cb-a"></div>
+          </div>
+          <div class="rc" id="rc-b">
+            <div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">パターンB 荷主内訳</div>
+            <div class="cb-wrap" id="cb-b"></div>
+          </div>
         </div>
-        <div class="mb"><div class="ml">利益（REFUND含む）</div><div class="mv" id="pr-a">-</div></div>
-        <div class="cb-wrap" id="cb-a"></div>
-      </div>
-      <div class="rc" id="rc-b">
-        <h3>パターンB <span id="badge-b"></span></h3>
-        <div class="rsub" id="rsub-b">神戸→東京 OLT → 合算仕立て</div>
-        <div id="det-b"></div>
-        <div class="mi">
-          <div class="mb"><div class="ml">総売上</div><div class="mv" id="rv-b">-</div></div>
-          <div class="mb"><div class="ml">総コスト</div><div class="mv" id="co-b">-</div></div>
+        <!-- コンテナ別詳細 -->
+        <div class="rg" style="margin-top:.75rem">
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem">パターンA コスト明細</div><div id="det-a"></div></div>
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">パターンB コスト明細</div><div id="det-b"></div></div>
         </div>
-        <div class="mb"><div class="ml">利益（REFUND含む）</div><div class="mv" id="pr-b">-</div></div>
-        <div class="cb-wrap" id="cb-b"></div>
       </div>
     </div>
-    <div id="concl"></div>
   </div>
 
   <!-- 保存・共有カード -->
