@@ -347,8 +347,9 @@ window.autoFillCntr = function() {
   var capBT40 = nv(selBT40 ? selBT40.cap_m3 : (sel40 ? sel40.cap_m3 : 0)) || 50;
   var capBK20 = nv(selBK20 ? selBK20.cap_m3 : (sel20 ? sel20.cap_m3 : 0)) || 25;
   var capBK40 = nv(selBK40 ? selBK40.cap_m3 : (sel40 ? sel40.cap_m3 : 0)) || 50;
-  var tRows = rows.filter(function(r) { return r.base === '東京'; });
-  var kRows = rows.filter(function(r) { return r.base === '神戸'; });
+  // サマリーバー（sum-bar）- baseAベース
+  var tRows = rows.filter(function(r) { return r.baseA === '東京'; });
+  var kRows = rows.filter(function(r) { return r.baseA === '神戸'; });
   var tT20 = tRows.filter(function(r) { return r.eCntr === '20FT'; }).reduce(function(s, r) { return s + r.vol; }, 0);
   var tT40 = tRows.filter(function(r) { return r.eCntr === '40HC'; }).reduce(function(s, r) { return s + r.vol; }, 0);
   var kT20 = kRows.filter(function(r) { return r.eCntr === '20FT'; }).reduce(function(s, r) { return s + r.vol; }, 0);
@@ -392,20 +393,26 @@ window.addRow = function(d) {
 
   tr.innerHTML =
     '<td><select class="ri ri-sel row-cust-sel" onchange="onRowCust(' + id + ',this)">' + custOpts + '</select></td>' +
-    '<td><select class="ri ri-base" id="rb-base-' + id + '" onchange="calc()"><option value="東京">東京</option><option value="神戸">神戸</option></select></td>' +
     '<td><input class="ri ri-sm" id="rb-vol-' + id + '" type="text" value="' + rv('vol', 10) + '" oninput="fmtI(this);onVolChange(' + id + ')"></td>' +
     '<td><select class="ri ri-dest" id="rb-dest-' + id + '" onchange="onDestChange(' + id + ')">' + destOpts + '</select><div id="rb-ts-disp-' + id + '" style="font-size:9px;color:var(--purple);margin-top:1px"></div></td>' +
-    '<td style="text-align:center;background:#F5FAF0;padding:3px 5px">' +
-      '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">' +
-        '<label style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--blue);cursor:pointer;white-space:nowrap">' +
-          '<input type="checkbox" id="rb-use-a-' + id + '" checked onchange="calc()" style="width:12px;height:12px;accent-color:var(--blue)"> A' +
-        '</label>' +
-        '<label style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:600;color:var(--acc);cursor:pointer;white-space:nowrap">' +
-          '<input type="checkbox" id="rb-use-b-' + id + '" checked onchange="calc()" style="width:12px;height:12px;accent-color:var(--acc)"> B' +
-        '</label>' +
-      '</div>' +
+    // A列：チェック＋拠点
+    '<td style="background:#E8F0FF;padding:3px 5px;min-width:90px">' +
+      '<label style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--blue);cursor:pointer;margin-bottom:3px">' +
+        '<input type="checkbox" id="rb-use-a-' + id + '" checked onchange="calc()" style="width:12px;height:12px;accent-color:var(--blue)"> 適用A' +
+      '</label>' +
+      '<select class="ri" id="rb-base-a-' + id + '" onchange="calc()" style="font-size:11px;font-family:var(--sans);background:#E8F0FF;border-color:var(--blue-brd);color:var(--blue);padding:2px 4px;width:100%">' +
+        '<option value="東京">東京</option><option value="神戸">神戸</option>' +
+      '</select>' +
     '</td>' +
-    '<td style="text-align:center;background:var(--purple-bg);padding:3px 5px"><div id="rb-cntr-auto-' + id + '" style="font-size:10px;font-weight:600;color:var(--purple);min-width:38px"></div></td>' +
+    // B列：チェック＋拠点
+    '<td style="background:#E8F5EE;padding:3px 5px;min-width:90px">' +
+      '<label style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--acc);cursor:pointer;margin-bottom:3px">' +
+        '<input type="checkbox" id="rb-use-b-' + id + '" checked onchange="calc()" style="width:12px;height:12px;accent-color:var(--acc)"> 適用B' +
+      '</label>' +
+      '<select class="ri" id="rb-base-b-' + id + '" onchange="calc()" style="font-size:11px;font-family:var(--sans);background:#E8F5EE;border-color:var(--acc-brd);color:var(--acc);padding:2px 4px;width:100%">' +
+        '<option value="東京">東京</option><option value="神戸">神戸</option>' +
+      '</select>' +
+    '</td>' +
     '<td><input class="ri ri-sm" id="rb-of-' + id + '" type="text" value="' + rv('of_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-lss-' + id + '" type="text" value="' + rv('lss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-pss-' + id + '" type="text" value="' + rv('pss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
@@ -429,7 +436,14 @@ window.addRow = function(d) {
     '<td><button class="del-row" onclick="delRow(' + id + ')">✕</button></td>';
 
   $('row-body').appendChild(tr);
-  if (d.simBase) $('rb-base-' + id).value = d.simBase;
+  // 初期拠点設定（A・B共通で顧客マスターの拠点を反映）
+  if (d.simBase) {
+    var baseAEl = $('rb-base-a-' + id);
+    var baseBEl = $('rb-base-b-' + id);
+    if (baseAEl) baseAEl.value = d.simBase;
+    if (baseBEl) baseBEl.value = d.simBase;
+  }
+  if (d.baseB) { var bEl = $('rb-base-b-' + id); if (bEl) bEl.value = d.baseB; }
 };
 
 window.delRow = function(id) {
@@ -472,9 +486,6 @@ window.onDestChange = function(id) {
 
 window.onVolChange = function(id) {
   fmtI($('rb-vol-' + id));
-  var vol = nv($('rb-vol-' + id) ? $('rb-vol-' + id).value : 0);
-  var autoLbl = $('rb-cntr-auto-' + id);
-  if (autoLbl) autoLbl.textContent = vol > 25 ? '40HC' : '20FT';
   calc();
 };
 
@@ -495,7 +506,10 @@ window.onRowCust = function(id, sel) {
   s('chand', c.customs_handling_jpy); s('ot', c.other_fee);
   s('ds', c.oversea_sell); s('dc', c.oversea_cost); s('ts', c.ts_sell);
   var bi = baseInfo(c.origin);
-  $('rb-base-' + id).value = bi.simBase;
+  var baseAEl = $('rb-base-a-' + id);
+  var baseBEl = $('rb-base-b-' + id);
+  if (baseAEl) baseAEl.value = bi.simBase;
+  if (baseBEl) baseBEl.value = bi.simBase;
   var destSel = $('rb-dest-' + id);
   if (destSel) { destSel.value = c.destination || 'RTM'; onDestChange(id); return; }
   calc();
@@ -521,9 +535,12 @@ function getRows() {
     var tsApply = $('rb-tschk-' + id) ? $('rb-tschk-' + id).checked : false;
     var useA    = $('rb-use-a-' + id) ? $('rb-use-a-' + id).checked : true;
     var useB    = $('rb-use-b-' + id) ? $('rb-use-b-' + id).checked : true;
+    var baseA   = $('rb-base-a-' + id) ? $('rb-base-a-' + id).value : '東京';
+    var baseB   = $('rb-base-b-' + id) ? $('rb-base-b-' + id).value : '東京';
     rows.push({
       id: id, custName: custName,
-      base: $('rb-base-' + id) ? $('rb-base-' + id).value : '東京',
+      base: baseA,   // 後方互換（パターンA拠点を代表値として使用）
+      baseA: baseA, baseB: baseB,
       vol: vol, eCntr: eCntr,
       of: g('of'), lss: g('lss'), pss: g('pss'), efs: g('efs'), ics: g('ics'),
       cfs: g('cfs'), thc: g('thc'), drs: g('drs'),
@@ -555,44 +572,75 @@ window.calc = function() {
   var rowsA = rows.filter(function(r) { return r.useA; });
   var rowsB = rows.filter(function(r) { return r.useB; });
 
-  // 全行（サマリー表示用）
-  var tRows = rows.filter(function(r) { return r.base === '東京'; });
-  var kRows = rows.filter(function(r) { return r.base === '神戸'; });
-  var tM = tRows.reduce(function(s, r) { return s + r.vol; }, 0);
-  var kM = kRows.reduce(function(s, r) { return s + r.vol; }, 0);
-  var allM = tM + kM;
-  var tsM  = rows.filter(function(r) { return r.tsApply; }).reduce(function(s, r) { return s + r.vol; }, 0);
-  var refM = Math.max(0, allM - tsM);
-
-  // パターンA用物量
-  var tRowsA = rowsA.filter(function(r) { return r.base === '東京'; });
-  var kRowsA = rowsA.filter(function(r) { return r.base === '神戸'; });
+  // パターンA用物量（baseAを使用）
+  var tRowsA = rowsA.filter(function(r) { return r.baseA === '東京'; });
+  var kRowsA = rowsA.filter(function(r) { return r.baseA === '神戸'; });
   var tMA = tRowsA.reduce(function(s, r) { return s + r.vol; }, 0);
   var kMA = kRowsA.reduce(function(s, r) { return s + r.vol; }, 0);
   var allMA = tMA + kMA;
   var tsMA  = rowsA.filter(function(r) { return r.tsApply; }).reduce(function(s, r) { return s + r.vol; }, 0);
 
-  // パターンB用物量
+  // パターンB用物量（baseBを使用）
+  var tRowsB = rowsB.filter(function(r) { return r.baseB === '東京'; });
+  var kRowsB = rowsB.filter(function(r) { return r.baseB === '神戸'; });
+  var tMB_vol = tRowsB.reduce(function(s, r) { return s + r.vol; }, 0);
+  var kMB_vol = kRowsB.reduce(function(s, r) { return s + r.vol; }, 0);
   var allMB = rowsB.reduce(function(s, r) { return s + r.vol; }, 0);
   var tsMB  = rowsB.filter(function(r) { return r.tsApply; }).reduce(function(s, r) { return s + r.vol; }, 0);
 
-  // コンテナ自動判定ラベル更新
-  rows.forEach(function(r) {
-    var lbl = $('rb-cntr-auto-' + r.id);
-    if (lbl) lbl.textContent = r.vol > 25 ? '40HC' : '20FT';
-  });
+  var tM = rows.filter(function(r) { return r.baseA === '東京'; }).reduce(function(s, r) { return s + r.vol; }, 0);
+  var kM = rows.filter(function(r) { return r.baseA === '神戸'; }).reduce(function(s, r) { return s + r.vol; }, 0);
+  var allM = rows.reduce(function(s, r) { return s + r.vol; }, 0);
+  var tsM  = rows.filter(function(r) { return r.tsApply; }).reduce(function(s, r) { return s + r.vol; }, 0);
+  var refM = Math.max(0, allM - tsM);
 
-  // OLT（パターンA：神戸荷主のうちAに含まれる分、パターンB：Bに含まれる全神戸分）
+  // ── 物量サマリー表示 ──────────────────────────────────────────
+  var volSumEl = $('vol-summary');
+  var volSumA  = $('vol-sum-a');
+  var volSumB  = $('vol-sum-b');
+  if (rows.length > 0 && volSumEl) {
+    volSumEl.style.display = '';
+    if (volSumA) {
+      var linesA = [];
+      linesA.push('<span style="color:var(--blue)">東京: <strong>' + fmt(tMA,1) + ' m³</strong></span>');
+      linesA.push('<span style="color:var(--red)">神戸: <strong>' + fmt(kMA,1) + ' m³</strong></span>');
+      linesA.push('<span style="color:var(--tx2)">合計: <strong>' + fmt(allMA,1) + ' m³</strong></span>');
+      // 目安本数
+      var capT20 = nv(selT20 ? selT20.cap_m3 : 0)||25, capT40 = nv(selT40 ? selT40.cap_m3 : 0)||50;
+      var capK20 = nv(selK20 ? selK20.cap_m3 : 0)||25, capK40 = nv(selK40 ? selK40.cap_m3 : 0)||50;
+      if (tMA > 0) linesA.push('<span style="font-size:11px;color:var(--tx3)">東京目安: 20FT×' + Math.ceil(tMA/capT20) + ' or 40HC×' + Math.ceil(tMA/capT40) + '</span>');
+      if (kMA > 0) linesA.push('<span style="font-size:11px;color:var(--tx3)">神戸目安: 20FT×' + Math.ceil(kMA/capK20) + ' or 40HC×' + Math.ceil(kMA/capK40) + '</span>');
+      volSumA.innerHTML = linesA.join('<br>');
+    }
+    if (volSumB) {
+      var linesB = [];
+      linesB.push('<span style="color:var(--blue)">東京: <strong>' + fmt(tMB_vol,1) + ' m³</strong></span>');
+      linesB.push('<span style="color:var(--red)">神戸: <strong>' + fmt(kMB_vol,1) + ' m³</strong></span>');
+      linesB.push('<span style="color:var(--tx2)">合計: <strong>' + fmt(allMB,1) + ' m³</strong></span>');
+      var capBT20 = nv(selBT20 ? selBT20.cap_m3 : 0)||25, capBT40 = nv(selBT40 ? selBT40.cap_m3 : 0)||50;
+      var capBK20 = nv(selBK20 ? selBK20.cap_m3 : 0)||25, capBK40 = nv(selBK40 ? selBK40.cap_m3 : 0)||50;
+      if (tMB_vol > 0) linesB.push('<span style="font-size:11px;color:var(--tx3)">B東京目安: 20FT×' + Math.ceil(tMB_vol/capBT20) + ' or 40HC×' + Math.ceil(tMB_vol/capBT40) + '</span>');
+      if (kMB_vol > 0) linesB.push('<span style="font-size:11px;color:var(--tx3)">B神戸目安: 20FT×' + Math.ceil(kMB_vol/capBK20) + ' or 40HC×' + Math.ceil(kMB_vol/capBK40) + '</span>');
+      volSumB.innerHTML = linesB.join('<br>');
+    }
+  } else if (volSumEl) {
+    volSumEl.style.display = 'none';
+  }
+
+  // コンテナ自動判定ラベル更新（削除済みのため空処理）
+
+  // OLT（パターンA：Aの神戸荷主分、パターンB：Bの神戸荷主分）
   var kMA_olt = kRowsA.reduce(function(s, r) { return s + r.vol; }, 0);
-  var kMB_olt = rowsB.filter(function(r) { return r.base === '神戸'; }).reduce(function(s, r) { return s + r.vol; }, 0);
+  var kMB_olt = kRowsB.reduce(function(s, r) { return s + r.vol; }, 0);
   var oltA = calcOLT(kMA_olt);
   var oltB = calcOLT(kMB_olt);
-  // 表示は神戸全体分
+  // OLT合計表示（パターンA・B両方の神戸分を表示）
   var oltDisp   = $('olt-total-disp');
   var oltDetail = $('olt-detail-disp');
-  var oltAll = calcOLT(kM);
-  if (oltDisp)   oltDisp.textContent   = kM > 0 ? fmt(oltAll.truck) + '円' : '¥0（神戸貨物なし）';
-  if (oltDetail) oltDetail.textContent = kM > 0 && oltAll.truck > 0 ? oltAll.desc : (kM > 0 ? '手配なし' : '');
+  var kMdisp = Math.max(kMA_olt, kMB_olt);
+  var oltAll = calcOLT(kMdisp);
+  if (oltDisp)   oltDisp.textContent   = kMdisp > 0 ? fmt(oltAll.truck) + '円' : '¥0（神戸貨物なし）';
+  if (oltDetail) oltDetail.textContent = kMdisp > 0 && oltAll.truck > 0 ? oltAll.desc : (kMdisp > 0 ? '手配なし' : '');
 
   // パターン別OLT適用フラグ
   var oltApplyA = $('olt-apply-a') ? $('olt-apply-a').checked : false;
@@ -671,29 +719,25 @@ window.calc = function() {
   var costA = cAT20.total + cAT40.total + cAK20.total + cAK40.total + oltForA + totalTsA + agentCostA + totalDelA + totalMiscA;
   var profA = totalRevA - costA + refA;
 
-  // パターンB：東京はBT船社、神戸はBK船社を使用
-  // パターンB用物量（東京荷主・神戸荷主それぞれ）
-  var tMB = rowsB.filter(function(r) { return r.base === '東京'; }).reduce(function(s, r) { return s + r.vol; }, 0);
-  var kMB = rowsB.filter(function(r) { return r.base === '神戸'; }).reduce(function(s, r) { return s + r.vol; }, 0);
-
+  // パターンB：東京はBT船社、神戸はBK船社を使用（baseBを参照）
   var cap20BT = nv(selBT20 ? selBT20.cap_m3 : 0) || 25;
   var cap40BT = nv(selBT40 ? selBT40.cap_m3 : 0) || 50;
   var cap20BK = nv(selBK20 ? selBK20.cap_m3 : 0) || 25;
   var cap40BK = nv(selBK40 ? selBK40.cap_m3 : 0) || 50;
 
   // 東京(BT)コンテナコスト
-  var cBT20 = ctByUnits(cbT20, tMB, selBT20, fx, eur, false);
-  var cBT40 = ctByUnits(cbT40, tMB, selBT40, fx, eur, false);
+  var cBT20 = ctByUnits(cbT20, tMB_vol, selBT20, fx, eur, false);
+  var cBT40 = ctByUnits(cbT40, tMB_vol, selBT40, fx, eur, false);
   // 神戸(BK)コンテナコスト
-  var cBK20 = ctByUnits(cbK20, kMB, selBK20, fx, eur, true);
-  var cBK40 = ctByUnits(cbK40, kMB, selBK40, fx, eur, true);
+  var cBK20 = ctByUnits(cbK20, kMB_vol, selBK20, fx, eur, true);
+  var cBK40 = ctByUnits(cbK40, kMB_vol, selBK40, fx, eur, true);
 
   // パターンBの物量按分（東京BT）
-  var btM20 = cbT20 > 0 && (cbT20 + cbT40 > 0) ? tMB * cbT20*cap20BT / (cbT20*cap20BT + cbT40*cap40BT || 1) : (cbT40 === 0 ? tMB : 0);
-  var btM40 = cbT40 > 0 && (cbT20 + cbT40 > 0) ? tMB * cbT40*cap40BT / (cbT20*cap20BT + cbT40*cap40BT || 1) : (cbT20 === 0 ? tMB : 0);
+  var btM20 = cbT20 > 0 && (cbT20 + cbT40 > 0) ? tMB_vol * cbT20*cap20BT / (cbT20*cap20BT + cbT40*cap40BT || 1) : (cbT40 === 0 ? tMB_vol : 0);
+  var btM40 = cbT40 > 0 && (cbT20 + cbT40 > 0) ? tMB_vol * cbT40*cap40BT / (cbT20*cap20BT + cbT40*cap40BT || 1) : (cbT20 === 0 ? tMB_vol : 0);
   // パターンBの物量按分（神戸BK）
-  var bkM20 = cbK20 > 0 && (cbK20 + cbK40 > 0) ? kMB * cbK20*cap20BK / (cbK20*cap20BK + cbK40*cap40BK || 1) : (cbK40 === 0 ? kMB : 0);
-  var bkM40 = cbK40 > 0 && (cbK20 + cbK40 > 0) ? kMB * cbK40*cap40BK / (cbK20*cap20BK + cbK40*cap40BK || 1) : (cbK20 === 0 ? kMB : 0);
+  var bkM20 = cbK20 > 0 && (cbK20 + cbK40 > 0) ? kMB_vol * cbK20*cap20BK / (cbK20*cap20BK + cbK40*cap40BK || 1) : (cbK40 === 0 ? kMB_vol : 0);
+  var bkM40 = cbK40 > 0 && (cbK20 + cbK40 > 0) ? kMB_vol * cbK40*cap40BK / (cbK20*cap20BK + cbK40*cap40BK || 1) : (cbK20 === 0 ? kMB_vol : 0);
 
   var refBT20 = calcRefundForCntr(btM20, tsMB, allMB, selBT20, fx);
   var refBT40 = calcRefundForCntr(btM40, tsMB, allMB, selBT40, fx);
@@ -813,7 +857,7 @@ window.calc = function() {
   if (totalTsB < 0)     dB.push(dr('T/S割引', fmtY(totalTsB), 'ref'));
   if (agentCostB !== 0) dB.push(dr('AGENTコスト（' + (selAgent ? selAgent.name : '') + '）', fmtY(agentCostB), 'tsc'));
   dB.push('<div class="divider"></div>');
-  var kMB_olt = rowsB.filter(function(r) { return r.base === '神戸'; }).reduce(function(s, r) { return s + r.vol; }, 0);
+  var kMB_olt = rowsB.filter(function(r) { return r.baseB === '神戸'; }).reduce(function(s, r) { return s + r.vol; }, 0);
   dB.push(kMB_olt > 0
     ? (oltApplyB
         ? (oltB.truck > 0
@@ -845,19 +889,19 @@ window.calc = function() {
   $('det-b').innerHTML = dB.join('');
 
   // 顧客内訳（パターン別に適用行を区別して表示）
-  function buildCbHtml(targetRows) {
+  function buildCbHtml(targetRows, useBaseKey) {
     return targetRows.map(function(r) {
+      var base = useBaseKey === 'B' ? r.baseB : r.baseA;
       var rev = rowRev(r, fx);
       var tsCost = rowTsCost(r, fx);
-      var bi = baseInfo(r.base === '東京' ? 'TOKYO' : 'KOBE');
+      var bi = baseInfo(base === '東京' ? 'TOKYO' : 'KOBE');
       var tsTag  = r.tsApply ? '<span style="font-size:9px;background:var(--purple-bg);color:var(--purple);padding:1px 5px;border-radius:3px">' + r.dest + '</span>' : '';
-      var cTag   = '<span style="font-size:9px;background:var(--purple-bg);color:var(--purple);padding:1px 4px;border-radius:3px">' + r.eCntr + '</span>';
       var tsNote = tsCost !== 0 ? '<br><span style="color:var(--purple);font-size:10px">T/S ' + fmtY(tsCost) + '</span>' : '';
-      return '<div class="cb-row"><span class="cb-name">' + r.custName + ' ' + tsTag + ' ' + cTag + '</span><span class="cb-tag ' + bi.tagCls + '">' + bi.label + '</span><span class="cb-vol">' + fmt(r.vol,1) + 'm³</span><span class="cb-sell">' + fmtY(rev) + tsNote + '</span></div>';
+      return '<div class="cb-row"><span class="cb-name">' + r.custName + ' ' + tsTag + '</span><span class="cb-tag ' + bi.tagCls + '">' + bi.label + '</span><span class="cb-vol">' + fmt(r.vol,1) + 'm³</span><span class="cb-sell">' + fmtY(rev) + tsNote + '</span></div>';
     }).join('') || '<div style="font-size:11px;color:var(--tx3);padding:4px 0">（対象なし）</div>';
   }
-  $('cb-a').innerHTML = buildCbHtml(rowsA);
-  $('cb-b').innerHTML = buildCbHtml(rowsB);
+  $('cb-a').innerHTML = buildCbHtml(rowsA, 'A');
+  $('cb-b').innerHTML = buildCbHtml(rowsB, 'B');
 
   // rsub（適用顧客数を表示）
   if ($('rsub-a')) $('rsub-a').textContent = '東京: 20FT×' + caT20 + ' / 40HC×' + caT40 + '　神戸: 20FT×' + caK20 + ' / 40HC×' + caK40 + '　（' + rowsA.length + '顧客）';
@@ -917,9 +961,9 @@ window.calc = function() {
   rows_html.push(cmpRow('　コンテナコスト 計', cntrA, cntrB, ''));
 
   // ── OLT費用 ──
-  var kRowsAol = rowsA.filter(function(r){return r.base==='神戸';});
+  var kRowsAol = rowsA.filter(function(r){return r.baseA==='神戸';});
   var kMAol = kRowsAol.reduce(function(s,r){return s+r.vol;},0);
-  var kMBol = rowsB.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
+  var kMBol = rowsB.filter(function(r){return r.baseB==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
   var hasOltSection = (oltApplyA && kMAol > 0) || (oltApplyB && kMBol > 0);
   if (hasOltSection) {
     rows_html.push(secRow('OLT費用（神戸→東京）'));
@@ -1255,10 +1299,12 @@ function collectSimData() {
     var id = tr.dataset.rid;
     var g = function(f) { var el = document.getElementById('rb-' + f + '-' + id); return el ? el.value : ''; };
     var custSel = tr.querySelector('.row-cust-sel');
+    var gs = function(f) { var el = document.getElementById('rb-' + f + '-' + id); return el ? el.value : ''; };
     var row = {
       custId:   custSel ? custSel.value : '',
-      base:     g('base'),
-      vol:      g('vol'),
+      baseA:    gs('base-a') || '東京',
+      baseB:    gs('base-b') || '東京',
+      vol:      gs('vol'),
       dest:     document.getElementById('rb-dest-' + id) ? document.getElementById('rb-dest-' + id).value : 'RTM',
       tsApply:  document.getElementById('rb-tschk-' + id) ? document.getElementById('rb-tschk-' + id).checked : false,
       useA:     document.getElementById('rb-use-a-' + id) ? document.getElementById('rb-use-a-' + id).checked : true,
@@ -1366,9 +1412,13 @@ async function restoreSimData(data) {
         custSel.value = r.custId;
         onRowCust(id, custSel);
       }
-      // 拠点
-      if (document.getElementById('rb-base-' + id) && r.base)
-        document.getElementById('rb-base-' + id).value = r.base;
+      // 拠点（A/B個別、旧フォーマット後方互換あり）
+      var baseAval = r.baseA || r.base || r.simBase || '東京';
+      var baseBval = r.baseB || r.base || r.simBase || '東京';
+      var baseAEl = document.getElementById('rb-base-a-' + id);
+      var baseBEl = document.getElementById('rb-base-b-' + id);
+      if (baseAEl) baseAEl.value = baseAval;
+      if (baseBEl) baseBEl.value = baseBval;
       // 仕向地
       if (document.getElementById('rb-dest-' + id) && r.dest) {
         document.getElementById('rb-dest-' + id).value = r.dest;

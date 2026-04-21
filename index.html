@@ -314,11 +314,9 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         <thead>
           <tr>
             <th rowspan="2">顧客名</th>
-            <th rowspan="2">拠点</th>
             <th rowspan="2" style="min-width:52px">物量 m³</th>
             <th rowspan="2" class="ts">仕向地</th>
-            <th rowspan="2" style="background:#F0F8E8;color:#2D6A1A;text-align:center;min-width:60px;font-size:9px">適用<br>パターン</th>
-            <th rowspan="2" style="min-width:45px;background:var(--purple-bg);color:var(--purple);font-size:9px">CNTR<br>自動</th>
+            <th colspan="2" style="background:#F0F8E8;color:#2D6A1A;text-align:center;font-size:9px;border-bottom:1px solid var(--brd)">パターン別設定</th>
             <th colspan="5" class="sea" style="text-align:center">海上諸掛 USD/m³</th>
             <th colspan="3" class="dom" style="text-align:center">国内/m³ JPY</th>
             <th colspan="4" class="dom" style="text-align:center;border-left:1px solid var(--acc-brd)">国内固定 JPY</th>
@@ -328,6 +326,8 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
             <th rowspan="2"></th>
           </tr>
           <tr>
+            <th style="background:#E8F0FF;color:var(--blue);font-size:9px;white-space:nowrap">A 適用/拠点</th>
+            <th style="background:#E8F5EE;color:var(--acc);font-size:9px;white-space:nowrap">B 適用/拠点</th>
             <th class="sea">O/F</th><th class="sea">LSS</th><th class="sea">PSS</th><th class="sea">EFS</th><th class="sea">ICS</th>
             <th class="dom">CFS</th><th class="dom">THC</th><th class="dom">DRS</th>
             <th class="dom" style="border-left:1px solid var(--acc-brd)">B/L</th>
@@ -342,6 +342,23 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       </table>
     </div>
     <button class="add-row-btn" onclick="addRow()">＋ 荷主を追加</button>
+  </div>
+
+  <!-- 物量サマリー（荷主リストとコンテナパネルの間） -->
+  <div id="vol-summary" style="display:none;margin-bottom:1rem">
+    <div style="background:var(--sur);border:1px solid var(--brd);border-radius:var(--rl);padding:.75rem 1.1rem">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2);margin-bottom:.6rem">積み地・パターン別 物量サマリー　<span style="font-weight:400;font-size:10px;color:var(--tx3)">→ コンテナ本数の目安</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:var(--blue-bg);border:1px solid var(--blue-brd);border-radius:var(--r);padding:.6rem .9rem">
+          <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.45rem">パターンA — 拠点別仕立て</div>
+          <div id="vol-sum-a" style="font-size:12px;line-height:1.9;font-family:var(--mono)"></div>
+        </div>
+        <div style="background:var(--acc-bg);border:1px solid var(--acc-brd);border-radius:var(--r);padding:.6rem .9rem">
+          <div style="font-size:10px;font-weight:700;color:var(--acc);margin-bottom:.45rem">パターンB — OLT横持ち</div>
+          <div id="vol-sum-b" style="font-size:12px;line-height:1.9;font-family:var(--mono)"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="card" id="cntr-panel">
