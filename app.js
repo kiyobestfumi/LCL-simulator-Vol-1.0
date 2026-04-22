@@ -262,7 +262,9 @@ window.onPatternChange = function() {
   if ($('cb-b-title'))   $('cb-b-title').textContent   = 'スロット2 — ' + l2 + ' 荷主内訳';
   if ($('det-a-title'))  $('det-a-title').textContent  = 'スロット1 — ' + l1 + ' コスト明細';
   if ($('det-b-title'))  $('det-b-title').textContent  = 'スロット2 — ' + l2 + ' コスト明細';
-  // VANNING/ラッシングカードはTK/KB/OLT時のみ表示
+  // CO-LOAD物量欄の表示制御（スロット2がCO-LOADの時に表示）
+  var cbColoadWrap = $('cb-coload-wrap');
+  if (cbColoadWrap) cbColoadWrap.style.display = (t2 === 'COLOAD') ? '' : 'none';
   var t1 = getSlotType(1), t2 = getSlotType(2);
   var needsVanning = (t1 !== 'COLOAD' || t2 !== 'COLOAD');
   var vanCard = document.querySelector('.card .ct');
@@ -1284,9 +1286,13 @@ window.calc = function() {
   var profDiff = profA - profB;
   rows_html.push('<tr class="cmp-profit">' +
     '<td><strong>利益（REFUND込）</strong></td>' +
-    '<td class="cv ' + (profA >= 0 ? 'pos' : 'neg') + '" style="font-size:14px"><strong>' + fmtY(profA) + '</strong>' + (winner==='A'?' <span class="wbadge">推奨</span>':'') + '</td>' +
-    '<td class="cv ' + (profB >= 0 ? 'pos' : 'neg') + '" style="font-size:14px"><strong>' + fmtY(profB) + '</strong>' + (winner==='B'?' <span class="wbadge">推奨</span>':'') + '</td>' +
-    '<td class="diff ' + (Math.abs(profDiff)<1?'neu':profDiff>0?'adv':'dis') + '" style="font-size:12px">' +
+    (winner === 'A'
+      ? '<td style="text-align:right;vertical-align:middle"><div style="display:inline-block;background:var(--acc);color:#fff;border-radius:8px;padding:6px 14px;font-family:var(--mono);font-size:16px;font-weight:900;box-shadow:0 2px 8px rgba(26,92,58,.35)">' + fmtY(profA) + ' 🏆</div></td>'
+      : '<td class="cv ' + (profA >= 0 ? 'pos' : 'neg') + '" style="font-size:14px;font-weight:700">' + fmtY(profA) + '</td>') +
+    (winner === 'B'
+      ? '<td style="text-align:right;vertical-align:middle"><div style="display:inline-block;background:var(--acc);color:#fff;border-radius:8px;padding:6px 14px;font-family:var(--mono);font-size:16px;font-weight:900;box-shadow:0 2px 8px rgba(26,92,58,.35)">' + fmtY(profB) + ' 🏆</div></td>'
+      : '<td class="cv ' + (profB >= 0 ? 'pos' : 'neg') + '" style="font-size:14px;font-weight:700">' + fmtY(profB) + '</td>') +
+    '<td class="diff ' + (Math.abs(profDiff)<1?'neu':profDiff>0?'adv':'dis') + '" style="font-size:12px;font-weight:700">' +
       (Math.abs(profDiff)<1 ? '同等' : (profDiff>0?'+':'')+fmt(profDiff)) +
     '</td>' +
   '</tr>');
@@ -1971,7 +1977,8 @@ function wizRenderStep(step) {
   });
 
   // 為替・名前
-  if ($('wiz-fx'))   $('wiz-fx').value   = saved.fx   || '155';
+  var autoFx = window._autoFxJpy ? String(window._autoFxJpy) : '155';
+  if ($('wiz-fx'))   $('wiz-fx').value   = saved.fx   || autoFx;
   if ($('wiz-name')) $('wiz-name').value = saved.name || ('パターン' + step);
 
   // 船社選択エリア描画
@@ -2424,106 +2431,150 @@ function wizCalcPattern(pat) {
 
 // ── 比較テーブル描画 ──────────────────────────────────────────
 function wizRenderResult() {
-  var results = wizPatterns.map(function(p) { return wizCalcPattern(p); }).filter(Boolean);
-  if (results.length < 2) {
+  // 全3パターン分を計算（スキップは null）
+  var allResults = wizPatterns.map(function(p) { return wizCalcPattern(p); });
+  // スキップされていない有効パターン
+  var validResults = allResults.filter(Boolean);
+
+  if (validResults.length < 2) {
     $('wiz-cmp-head').innerHTML = '';
-    $('wiz-cmp-body').innerHTML = '<tr><td colspan="4" style="padding:2rem;text-align:center;color:var(--tx3)">有効なパターンが2つ以上必要です</td></tr>';
+    $('wiz-cmp-body').innerHTML = '<tr><td colspan="5" style="padding:2rem;text-align:center;color:var(--tx3)">有効なパターンが2つ以上必要です</td></tr>';
     $('wiz-concl').innerHTML = '';
     return;
   }
 
-  var cols = results.length;
-  var bestIdx = 0;
-  results.forEach(function(r,i) { if (r.prof > results[bestIdx].prof) bestIdx = i; });
+  var totalCols = allResults.length; // 表示列数（スキップ含む）
+  // 有効パターン中で最も利益が高いもの
+  var bestProf = -Infinity;
+  validResults.forEach(function(r) { if (r.prof > bestProf) bestProf = r.prof; });
 
-  // ヘッダー
-  var hCols = results.map(function(r, i) {
-    var badge = i === bestIdx ? ' <span class="wbadge">推奨</span>' : '';
-    var color = i === bestIdx ? 'var(--acc)' : 'var(--tx)';
-    var bg    = i === bestIdx ? 'var(--acc-bg)' : '';
+  // ヘッダー生成
+  var hCols = allResults.map(function(r, i) {
+    if (!r) {
+      // スキップ
+      return '<th style="color:var(--tx3);background:var(--sur2);text-decoration:line-through">' +
+             (wizPatterns[i].name || 'パターン'+(i+1)) + '<br><span style="font-size:10px;font-weight:400">SKIP</span></th>';
+    }
+    var isBest = (r.prof === bestProf);
+    var badge = isBest ? ' <span class="wbadge">推奨</span>' : '';
+    var color = isBest ? 'var(--acc)' : 'var(--tx)';
+    var bg    = isBest ? 'var(--acc-bg)' : '';
     return '<th style="color:' + color + ';background:' + bg + '">' + r.name + badge + '</th>';
   }).join('');
-  var diffHead = cols >= 2 ? '<th style="color:var(--tx3);font-size:10px">差額<br>対①</th>' : '';
-  $('wiz-cmp-head').innerHTML = '<tr><th style="text-align:left">項目</th>' + hCols + diffHead + '</tr>' +
-    '<tr><td></td>' + results.map(function(r) {
-      return '<td style="font-size:10px;text-align:right;color:var(--tx3);padding:2px 12px">' + PATTERN_LABELS[r.type] + '</td>';
-    }).join('') + (cols>=2?'<td></td>':'') + '</tr>';
 
-  // ヘルパー
-  function row(label, vals, cls, large) {
-    var vCells = vals.map(function(v, i) {
-      if (v === null) return '<td class="wv">─</td>';
-      var best = (i === bestIdx);
-      var vcls = best ? ' best' : '';
-      var sty  = large ? 'font-size:14px;font-weight:700' : '';
-      return '<td class="wv' + vcls + '" style="' + sty + '">' + fmtY(v) + '</td>';
+  $('wiz-cmp-head').innerHTML =
+    '<tr><th style="text-align:left">項目</th>' + hCols + '<th style="color:var(--tx3);font-size:10px">差額<br>（対①）</th></tr>' +
+    '<tr><td></td>' + allResults.map(function(r) {
+      if (!r) return '<td style="font-size:10px;text-align:right;color:var(--tx3)">─</td>';
+      return '<td style="font-size:10px;text-align:right;color:var(--tx3);padding:2px 12px">' + PATTERN_LABELS[r.type] + '</td>';
+    }).join('') + '<td></td></tr>';
+
+  // ヘルパー：値セル（スキップは「─」、有効は金額/m³）
+  function valCell(r, v, isBest, large, isM3) {
+    if (!r) return '<td class="wv" style="color:var(--tx3)">─</td>';
+    var vcls = isBest ? ' best' : '';
+    var sty  = large ? 'font-size:16px;font-weight:900;' : '';
+    if (isBest && large) sty += 'background:var(--acc-bg);border-radius:6px;padding:4px 8px;display:inline-block;';
+    var txt = isM3 ? fmt(v,1) + ' m³' : fmtY(v);
+    return '<td class="wv' + vcls + '" style="' + sty + '">' + txt + '</td>';
+  }
+
+  function tableRow(label, getter, cls, large, isM3) {
+    // 有効パターン中の最善値を特定
+    var bestVal = large ? -Infinity : null;
+    if (large) validResults.forEach(function(r) { if (r.prof !== undefined && r.prof > bestVal) bestVal = r.prof; });
+    var cells = allResults.map(function(r) {
+      if (!r) return '<td class="wv" style="color:var(--tx3)">─</td>';
+      var v = getter(r);
+      var isBest = large ? (v === bestVal) : false;
+      return valCell(r, v, isBest, large, isM3);
     }).join('');
+    // 差額（対①）
+    var base = allResults[0];
     var diff = '';
-    if (cols >= 2 && vals[0] !== null && vals[1] !== null) {
-      var d = vals[0] - results[0].prof; // 対①差分は利益行のみ（汎用化）
-      // 差額は呼び出し側で計算済みの値を渡す
-      diff = '';
-    }
-    return '<tr class="' + (cls||'') + '"><td>' + label + '</td>' + vCells + (cols>=2?'<td></td>':'') + '</tr>';
-  }
-  function diffRow(label, vals, cls, large) {
-    var base = vals[0];
-    var vCells = vals.map(function(v, i) {
-      if (v === null) return '<td class="wv">─</td>';
-      var best = (i === bestIdx);
-      var vcls = best ? ' best' : '';
-      var sty  = large ? 'font-size:14px;font-weight:700' : '';
-      return '<td class="wv' + vcls + '" style="' + sty + '">' + fmtY(v) + '</td>';
-    }).join('');
-    var diffCells = '';
-    if (cols >= 2) {
-      vals.forEach(function(v, i) {
-        if (i === 0) { diffCells += '<td></td>'; return; }
-        if (v === null || base === null) { diffCells += '<td class="wdiff">─</td>'; return; }
-        var d = v - base;
-        var dcls = Math.abs(d) < 1 ? '' : (d > 0 ? ' adv' : ' dis');
-        diffCells += '<td class="wdiff' + dcls + '">' + (Math.abs(d)<1?'同等':(d>0?'+':'')+fmt(d)) + '</td>';
+    if (base) {
+      var dv = validResults.length >= 2 ? null : null;
+      // 2列目以降の最初の有効パターンと①の差
+      var diffVals = allResults.map(function(r, i) {
+        if (i === 0) return null;
+        if (!r || !base) return null;
+        return getter(r) - getter(base);
       });
+      var firstDiff = diffVals.find(function(d){return d!==null;});
+      if (firstDiff !== null && firstDiff !== undefined) {
+        var dcls = Math.abs(firstDiff) < 1 ? 'neu' : (firstDiff > 0 ? 'adv' : 'dis');
+        diff = '<td class="wdiff ' + dcls + '">' + (Math.abs(firstDiff)<1 ? '同等' : (firstDiff>0?'+':'')+fmt(firstDiff)) + '</td>';
+      } else {
+        diff = '<td></td>';
+      }
     }
-    return '<tr class="' + (cls||'') + '"><td>' + label + '</td>' + vCells + diffCells + '</tr>';
+    return '<tr class="' + (cls||'') + '"><td>' + label + '</td>' + cells + diff + '</tr>';
   }
+
   function secRow(label) {
-    return '<tr class="wiz-section"><td colspan="' + (cols+2) + '">' + label + '</td></tr>';
+    return '<tr class="wiz-section"><td colspan="' + (totalCols+2) + '">' + label + '</td></tr>';
   }
 
   var bodyHtml = '';
 
-  // 物量
+  // 物量（m³表示）
   bodyHtml += secRow('物量');
-  bodyHtml += diffRow('東京 m³',  results.map(function(r){return r.tM;}));
-  bodyHtml += diffRow('神戸 m³',  results.map(function(r){return r.kM;}));
-  bodyHtml += diffRow('合計 m³',  results.map(function(r){return r.allM;}));
+  bodyHtml += tableRow('東京 m³', function(r){return r.tM;}, '', false, true);
+  bodyHtml += tableRow('神戸 m³', function(r){return r.kM;}, '', false, true);
+  bodyHtml += tableRow('合計 m³', function(r){return r.allM;}, '', false, true);
 
-  // コンテナコスト
+  // コスト
   bodyHtml += secRow('コンテナ・仕入コスト');
-  bodyHtml += diffRow('コンテナ/CO-LOADコスト', results.map(function(r){return r.cntrCost;}));
-  var hasTs = results.some(function(r){return r.totalTs!==0;});
-  if (hasTs) bodyHtml += diffRow('T/Sコスト', results.map(function(r){return r.totalTs||0;}));
+  bodyHtml += tableRow('コンテナ/CO-LOADコスト', function(r){return r.cntrCost;});
+  var hasTs = validResults.some(function(r){return r.totalTs!==0;});
+  if (hasTs) bodyHtml += tableRow('T/Sコスト', function(r){return r.totalTs||0;});
 
-  // 総コスト
-  bodyHtml += diffRow('総コスト', results.map(function(r){return r.cost;}), 'wiz-total');
+  // 総コスト（最小が有利 → 差額列を反転）
+  bodyHtml += '<tr class="wiz-total"><td>総コスト</td>' +
+    allResults.map(function(r) {
+      if (!r) return '<td class="wv" style="color:var(--tx3)">─</td>';
+      var minCost = Math.min.apply(null, validResults.map(function(x){return x.cost;}));
+      var isBest = r.cost === minCost;
+      var sty = isBest ? 'color:var(--acc);font-weight:700' : '';
+      return '<td class="wv" style="' + sty + '"><strong>' + fmtY(r.cost) + '</strong></td>';
+    }).join('') + '<td></td></tr>';
 
   // 売上
   bodyHtml += secRow('売上');
-  bodyHtml += diffRow('総売上', results.map(function(r){return r.totalRev;}));
+  bodyHtml += tableRow('総売上', function(r){return r.totalRev;});
 
-  // 利益
-  bodyHtml += diffRow('利益', results.map(function(r){return r.prof;}), 'wiz-profit', true);
+  // 利益（最強調）
+  bodyHtml += '<tr class="wiz-profit"><td><strong>利益</strong></td>' +
+    allResults.map(function(r) {
+      if (!r) return '<td class="wv" style="color:var(--tx3);font-size:14px">─</td>';
+      var isBest = r.prof === bestProf;
+      if (isBest) {
+        return '<td style="text-align:right;vertical-align:middle">' +
+          '<div style="display:inline-block;background:var(--acc);color:#fff;border-radius:8px;padding:6px 14px;font-family:var(--mono);font-size:16px;font-weight:900;box-shadow:0 2px 8px rgba(26,92,58,.35)">' +
+          fmtY(r.prof) + ' 🏆</div></td>';
+      }
+      var cls = r.prof >= 0 ? 'color:var(--tx)' : 'color:var(--red)';
+      return '<td class="wv" style="font-size:14px;font-weight:700;' + cls + '">' + fmtY(r.prof) + '</td>';
+    }).join('') +
+    // 差額
+    (function() {
+      var base = allResults[0];
+      if (!base) return '<td></td>';
+      var firstValid = allResults.find(function(r,i){return i>0&&r;});
+      if (!firstValid) return '<td></td>';
+      var d = firstValid.prof - base.prof;
+      var dcls = Math.abs(d)<1?'neu':d>0?'adv':'dis';
+      return '<td class="wdiff ' + dcls + '" style="font-size:13px;font-weight:700">' + (Math.abs(d)<1?'同等':(d>0?'+':'')+fmt(d)) + '</td>';
+    })() +
+  '</tr>';
 
   $('wiz-cmp-body').innerHTML = bodyHtml;
 
-  // 結論
-  var best = results[bestIdx];
-  var second = results.filter(function(_,i){return i!==bestIdx;});
-  var maxDiff = second.reduce(function(mx,r){return Math.max(mx, Math.abs(best.prof-r.prof));},0);
-  var html = '<div class="cbox ok"><p>✅ <strong>' + best.name + ' が最も有利</strong>（最大差額：' + fmtY(maxDiff) + '）<br>';
-  html += '<span style="font-size:11px">' + PATTERN_LABELS[best.type] + '　総売上 ' + fmtY(best.totalRev) + '　総コスト ' + fmtY(best.cost) + '</span></p></div>';
-  $('wiz-concl').innerHTML = html;
+  // 結論バナー
+  var best = validResults.find(function(r){return r.prof===bestProf;});
+  var maxDiff = validResults.reduce(function(mx,r){return r===best?mx:Math.max(mx,Math.abs(best.prof-r.prof));},0);
+  $('wiz-concl').innerHTML = '<div class="cbox ok"><p>🏆 <strong>' + best.name + ' が最も有利</strong>（最大差額：' + fmtY(maxDiff) + '）<br>' +
+    '<span style="font-size:11px">' + PATTERN_LABELS[best.type] + '　総売上 ' + fmtY(best.totalRev) + '　総コスト ' + fmtY(best.cost) + '　利益 ' + fmtY(best.prof) + '</span></p></div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -2547,16 +2598,20 @@ async function fetchFxRate() {
 function applyFxRate(rate) {
   if (!rate) return;
   var r = String(rate);
+  // EUR/JPYはUSD/JPY×0.92が近似（ECB基準）
+  var eurRate = String(Math.floor(rate * 0.92));
   // シミュレーション画面
-  if ($('sim-fx')) { $('sim-fx').value = r; }
-  // ウィザード
-  if ($('wiz-fx')) { $('wiz-fx').value = r; }
-  // ヘッダーに取得日時を表示
+  if ($('sim-fx'))  $('sim-fx').value  = r;
+  if ($('sim-eur')) $('sim-eur').value = eurRate;
+  // ウィザード（現在表示中のフィールドに適用。各ステップ描画時にも使えるよう変数保持）
+  window._autoFxJpy = rate;
+  window._autoFxEur = Math.floor(rate * 0.92);
+  if ($('wiz-fx')) $('wiz-fx').value = r;
+  // ヘッダーに表示
   var lbl = $('conn-lbl');
   if (lbl) {
     var orig = lbl.textContent;
-    // 既存テキストに追記（接続済みメッセージの後）
-    var fxNote = '　💱 USD/JPY ' + r + '（自動取得）';
+    var fxNote = '　💱 USD/JPY ' + r + '  EUR/JPY ' + eurRate + '（自動取得）';
     if (orig.indexOf('💱') < 0) lbl.textContent = orig + fxNote;
   }
 }
