@@ -235,15 +235,45 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 
   <!-- ステップ1〜3（共通テンプレート、JSで切り替え） -->
   <div id="wiz-input-area">
-    <!-- 為替（共通） -->
-    <div class="card" style="padding:.6rem 1rem;margin-bottom:.75rem">
-      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-        <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em">為替</span>
-        <div style="display:flex;align-items:center;gap:6px">
-          <label style="font-size:11px;color:var(--tx2)">USD/JPY</label>
-          <input type="text" id="wiz-fx" value="155" oninput="fmtI(this)" style="width:68px;font-family:var(--mono);font-size:13px;padding:4px 7px;border:1px solid var(--brd);border-radius:var(--r)">
+    <!-- 為替・コスト共通設定 -->
+    <div class="card" style="padding:.75rem 1rem;margin-bottom:.75rem">
+      <div class="ct" style="margin-bottom:.6rem">為替・コスト共通設定
+        <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.3rem">各ステップ共通。変更した場合は「再計算」を押してください。</span>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+        <div class="f" style="min-width:90px">
+          <label>USD/JPY</label>
+          <input type="text" id="wiz-fx" value="155" oninput="fmtI(this)" style="font-family:var(--mono);font-size:13px;padding:5px 8px;border:1px solid var(--brd);border-radius:var(--r)">
+          <div class="unit">💱 自動取得</div>
         </div>
-        <span style="font-size:10px;color:var(--tx3)">💱 自動取得（起動時）</span>
+        <div class="f" style="min-width:90px">
+          <label>EUR/JPY</label>
+          <input type="text" id="wiz-eur" value="187" oninput="fmtI(this)" style="font-family:var(--mono);font-size:13px;padding:5px 8px;border:1px solid var(--brd);border-radius:var(--r)">
+          <div class="unit">HMM EES用</div>
+        </div>
+        <div style="width:1px;background:var(--brd);align-self:stretch"></div>
+        <div class="f" style="min-width:90px">
+          <label>東京 VANNING JPY/m³</label>
+          <input type="text" id="wiz-van-tokyo" value="2,800" oninput="fmtI(this)" style="font-family:var(--mono);font-size:13px;padding:5px 8px;border:1px solid var(--blue-brd);border-radius:var(--r);background:var(--blue-bg)">
+        </div>
+        <div class="f" style="min-width:90px">
+          <label>神戸 VANNING JPY/m³</label>
+          <input type="text" id="wiz-van-kobe" value="2,600" oninput="fmtI(this)" style="font-family:var(--mono);font-size:13px;padding:5px 8px;border:1px solid var(--red-brd);border-radius:var(--r);background:var(--red-bg)">
+        </div>
+        <div class="f" style="min-width:90px">
+          <label>ラッシング JPY/CNTR</label>
+          <input type="text" id="wiz-lashing" value="6,000" oninput="fmtI(this)" style="font-family:var(--mono);font-size:13px;padding:5px 8px;border:1px solid var(--red-brd);border-radius:var(--r);background:var(--red-bg)">
+        </div>
+        <div style="width:1px;background:var(--brd);align-self:stretch"></div>
+        <div class="f" style="min-width:90px">
+          <label>OLT入出庫料 JPY/m³</label>
+          <input type="text" id="wiz-olt-handling" value="1,800" oninput="fmtI(this)" style="font-family:var(--mono);font-size:13px;padding:5px 8px;border:1px solid var(--amber-brd);border-radius:var(--r);background:var(--amber-bg)">
+        </div>
+        <div class="f" style="min-width:90px">
+          <label>OLTトラック費（合計）JPY</label>
+          <input type="text" id="wiz-olt-truck" value="0" oninput="fmtI(this)" style="font-family:var(--mono);font-size:13px;padding:5px 8px;border:1px solid var(--amber-brd);border-radius:var(--r);background:var(--amber-bg)">
+          <div class="unit">神戸→東京 実費を入力</div>
+        </div>
       </div>
     </div>
 
