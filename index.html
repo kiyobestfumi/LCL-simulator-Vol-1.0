@@ -233,26 +233,46 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 
   <!-- ステップ1〜3（共通テンプレート、JSで切り替え） -->
   <div id="wiz-input-area">
-    <!-- パターン設定カード -->
-    <div class="card" id="wiz-pattern-card">
-      <div class="ct">
-        <span id="wiz-pattern-title">パターン1 設定</span>
-        <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.5rem">スロット選択・船社を設定してください</span>
+    <!-- 為替（共通） -->
+    <div class="card" style="padding:.6rem 1rem;margin-bottom:.75rem">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <span style="font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em">為替</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;color:var(--tx2)">USD/JPY</label>
+          <input type="text" id="wiz-fx" value="155" oninput="fmtI(this)" style="width:68px;font-family:var(--mono);font-size:13px;padding:4px 7px;border:1px solid var(--brd);border-radius:var(--r)">
+        </div>
+        <span style="font-size:10px;color:var(--tx3)">💱 自動取得（起動時）</span>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.85rem" id="wiz-type-btns">
-        <label id="wbtn-TK"     class="pt-btn pt-active" style="--ptc:var(--blue);--ptbg:var(--blue-bg);--ptbd:var(--blue-brd)"><input type="radio" name="wiztype" value="TK"     checked onchange="onWizTypeChange()" style="display:none">東京・神戸 独立</label>
-        <label id="wbtn-KB"     class="pt-btn" style="--ptc:var(--red);--ptbg:var(--red-bg);--ptbd:var(--red-brd)"><input type="radio" name="wiztype" value="KB"     onchange="onWizTypeChange()" style="display:none">神戸のみ</label>
-        <label id="wbtn-COLOAD" class="pt-btn" style="--ptc:var(--amber);--ptbg:var(--amber-bg);--ptbd:var(--amber-brd)"><input type="radio" name="wiztype" value="COLOAD" onchange="onWizTypeChange()" style="display:none">CO-LOAD</label>
-        <label id="wbtn-OLT"   class="pt-btn" style="--ptc:var(--acc);--ptbg:var(--acc-bg);--ptbd:var(--acc-brd)"><input type="radio" name="wiztype" value="OLT"    onchange="onWizTypeChange()" style="display:none">OLT混載</label>
-      </div>
-      <div id="wiz-carriers" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem"></div>
-      <div id="wiz-coload-rate" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.5rem">
-        <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:.3rem">CO-LOADコスト（固定）</div>
-        <div id="wiz-coload-rate-detail" style="font-size:11px;color:var(--amber);font-family:var(--mono)"></div>
-      </div>
-      <div class="g3">
-        <div class="f"><label>為替 USD/JPY</label><input type="text" id="wiz-fx" value="155" oninput="fmtI(this)"></div>
-        <div class="f"><label>パターン名（任意）</label><input type="text" id="wiz-name" placeholder="例: ONE 東京・神戸独立"></div>
+    </div>
+
+    <!-- スロットA・B パターン設定カード（2列） -->
+    <div class="card">
+      <div class="ct"><span id="wiz-pattern-title">ステップ1 設定</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <!-- スロットA -->
+        <div style="border:2px solid var(--blue-brd);border-radius:var(--rl);padding:.85rem;background:var(--blue-bg)">
+          <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.07em">スロット A</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.6rem" id="wiz-typeA-btns">
+            <label class="pt-btn pt-active wt-btn" data-slot="A" data-val="TK"     style="--ptc:var(--blue);--ptbg:var(--blue-bg);--ptbd:var(--blue-brd)"><input type="radio" name="wiztypeA" value="TK"     checked onchange="onWizSlotTypeChange('A')" style="display:none">東京・神戸 独立</label>
+            <label class="pt-btn wt-btn"           data-slot="A" data-val="COLOAD" style="--ptc:var(--amber);--ptbg:var(--amber-bg);--ptbd:var(--amber-brd)"><input type="radio" name="wiztypeA" value="COLOAD" onchange="onWizSlotTypeChange('A')" style="display:none">CO-LOAD＋東京</label>
+            <label class="pt-btn wt-btn"           data-slot="A" data-val="OLT"    style="--ptc:var(--acc);--ptbg:var(--acc-bg);--ptbd:var(--acc-brd)"><input type="radio" name="wiztypeA" value="OLT"    onchange="onWizSlotTypeChange('A')" style="display:none">OLT＋東京COMBINE</label>
+          </div>
+          <div id="wiz-carriersA" style="display:flex;flex-direction:column;gap:6px;margin-bottom:.4rem"></div>
+          <div id="wiz-coload-rateA" style="display:none;font-size:10px;color:var(--amber);margin-top:.3rem;padding:.4rem .6rem;background:var(--amber-bg);border-radius:var(--r)"></div>
+          <div class="f" style="margin-top:.5rem"><label style="font-size:10px">スロットA 名称</label><input type="text" id="wiz-nameA" placeholder="例: CO-LOAD＋ONE東京" style="font-size:11px"></div>
+        </div>
+        <!-- スロットB -->
+        <div style="border:2px solid var(--acc-brd);border-radius:var(--rl);padding:.85rem;background:var(--acc-bg)">
+          <div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.07em">スロット B</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.6rem" id="wiz-typeB-btns">
+            <label class="pt-btn wt-btn"           data-slot="B" data-val="TK"     style="--ptc:var(--blue);--ptbg:var(--blue-bg);--ptbd:var(--blue-brd)"><input type="radio" name="wiztypeB" value="TK"     onchange="onWizSlotTypeChange('B')" style="display:none">東京・神戸 独立</label>
+            <label class="pt-btn pt-active wt-btn" data-slot="B" data-val="COLOAD" style="--ptc:var(--amber);--ptbg:var(--amber-bg);--ptbd:var(--amber-brd)"><input type="radio" name="wiztypeB" value="COLOAD" checked onchange="onWizSlotTypeChange('B')" style="display:none">CO-LOAD＋東京</label>
+            <label class="pt-btn wt-btn"           data-slot="B" data-val="OLT"    style="--ptc:var(--acc);--ptbg:var(--acc-bg);--ptbd:var(--acc-brd)"><input type="radio" name="wiztypeB" value="OLT"    onchange="onWizSlotTypeChange('B')" style="display:none">OLT＋東京COMBINE</label>
+          </div>
+          <div id="wiz-carriersB" style="display:flex;flex-direction:column;gap:6px;margin-bottom:.4rem"></div>
+          <div id="wiz-coload-rateB" style="display:none;font-size:10px;color:var(--amber);margin-top:.3rem;padding:.4rem .6rem;background:var(--amber-bg);border-radius:var(--r)"></div>
+          <div class="f" style="margin-top:.5rem"><label style="font-size:10px">スロットB 名称</label><input type="text" id="wiz-nameB" placeholder="例: OLT＋HMM東京" style="font-size:11px"></div>
+        </div>
       </div>
     </div>
 
@@ -260,7 +280,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div class="card">
       <div class="ct">
         BKGリスト
-        <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.25rem">前のパターンからコピー済み。変更・追加可。</span>
+        <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.25rem">ステップ1のBKGをベースにコピー。変更・追加可。</span>
       </div>
       <div style="overflow-x:auto">
         <table class="rt" id="wiz-row-tbl">
@@ -280,26 +300,30 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
           <tbody id="wiz-row-body"></tbody>
         </table>
       </div>
-      <button class="add-row-btn" onclick="wizAddRow()" style="margin-top:.5rem">＋ 荷主を追加</button>
+      <button class="add-row-btn" onclick="wizAddRow()" style="margin-top:.5rem">＋ BKGを追加</button>
     </div>
 
-    <!-- コンテナ構成 -->
+    <!-- コンテナ構成（スロットA・B） -->
     <div class="card" id="wiz-cntr-card">
       <div class="ct">コンテナ構成
         <button class="btn btn-sm" onclick="wizAutoFill()" style="margin-left:auto;font-size:11px">自動計算値を反映</button>
       </div>
-      <div id="wiz-cntr-inputs" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div id="wiz-cntr-inputsA"></div>
+        <div id="wiz-cntr-inputsB"></div>
+      </div>
       <div id="wiz-vol-summary" style="margin-top:.6rem;font-size:11px;color:var(--tx2);font-family:var(--mono)"></div>
     </div>
 
-    <!-- このパターンの計算結果プレビュー -->
-    <div class="card" id="wiz-preview-card" style="border-color:var(--blue-brd);display:none">
-      <div class="ct" style="color:var(--blue)">
-        <span id="wiz-preview-title">このパターンの計算結果</span>
-        <button class="btn btn-sm" onclick="wizCalcPreview()" style="margin-left:auto;font-size:11px;background:var(--blue-bg);border-color:var(--blue-brd);color:var(--blue)">🔄 再計算</button>
+    <!-- プレビュー（A・B並列） -->
+    <div class="card" id="wiz-preview-card" style="border-color:var(--brd2);display:none">
+      <div class="ct">
+        <span id="wiz-preview-title">このステップの計算結果</span>
+        <button class="btn btn-sm" onclick="wizCalcPreview()" style="margin-left:auto;font-size:11px">🔄 再計算</button>
       </div>
-      <div id="wiz-preview-body">
-        <div style="color:var(--tx3);font-size:12px;text-align:center;padding:1rem">コンテナ構成を入力後、「再計算」ボタンを押すか自動計算値を反映してください</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="wiz-preview-body">
+        <div id="wiz-preview-A"></div>
+        <div id="wiz-preview-B"></div>
       </div>
     </div>
 
@@ -391,7 +415,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
             <th rowspan="2">顧客名</th>
             <th rowspan="2" style="min-width:52px">物量 m³</th>
             <th rowspan="2" class="ts">仕向地</th>
-            <th rowspan="2" style="background:#E8F0FF;color:var(--blue);min-width:60px;font-size:9px" id="th-slot1-hdr2">積み地</th>
+
             <th colspan="5" class="sea" style="text-align:center">海上諸掛 USD/m³</th>
             <th colspan="3" class="dom" style="text-align:center">国内/m³ JPY</th>
             <th colspan="4" class="dom" style="text-align:center;border-left:1px solid var(--acc-brd)">国内固定 JPY</th>
@@ -526,27 +550,6 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         <div style="font-size:10px;color:var(--amber)">神戸貨物に適用</div>
       </div>
     </div>
-    <!-- コンテナ本数設定 -->
-    <div style="border-top:1px solid var(--brd);padding-top:.6rem;margin-top:.3rem">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);margin-bottom:.5rem">コンテナ本数設定
-        <button class="btn btn-sm" onclick="simAutoFill()" style="margin-left:8px;font-size:10px">自動計算値を反映</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="background:var(--blue-bg);border-radius:var(--r);padding:.5rem .8rem">
-          <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.35rem">東京 船社</div>
-          <div style="display:flex;gap:12px;align-items:center">
-            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">20FT</label><input type="number" id="sim-t20" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
-            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">40HC</label><input type="number" id="sim-t40" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
-          </div>
-        </div>
-        <div style="background:var(--red-bg);border-radius:var(--r);padding:.5rem .8rem">
-          <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:.35rem">神戸 船社</div>
-          <div style="display:flex;gap:12px;align-items:center">
-            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">20FT</label><input type="number" id="sim-k20" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
-            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">40HC</label><input type="number" id="sim-k40" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 
