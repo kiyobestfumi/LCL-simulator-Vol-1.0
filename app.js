@@ -1479,6 +1479,7 @@ function getSimRowsForWizard() {
     rows.push({
       custId: custId, custName: custName,
       vol: g('vol'), base: autoBase,
+      isCoload: false, // シミュレーション側はCO-LOAD列なし（ウィザードで手動設定）
       dest: dest, tsRate: tsRate, tsApply: tsApply,
       of: g('of'), lss: g('lss'), pss: g('pss'), efs: g('efs'), ics: g('ics'),
       cfs: g('cfs'), thc: g('thc'), drs: g('drs'), bl: g('bl'), ts: g('ts')
@@ -1698,7 +1699,11 @@ function wizRenderCntrInputs(sl, type, saved) {
   var el = $('wiz-cntr-inputs' + sl); if (!el) return;
   var cv = saved.cntr || {};
   if (type === 'COLOAD') {
-    el.innerHTML = '<div style="color:var(--amber);font-size:11px;padding:.5rem">CO-LOADはコンテナ本数不要です。</div>';
+    el.innerHTML = '<div style="background:var(--amber-bg);border-radius:var(--r);padding:.6rem .8rem;border:1px solid var(--amber-brd)">' +
+      '<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:.3rem">📦 CO-LOAD（コンテナ本数不要）</div>' +
+      '<div id="wiz-cl-m3-disp-'+sl+'" style="font-family:var(--mono);font-size:13px;color:var(--amber);font-weight:600">0 m³</div>' +
+      '<div style="font-size:10px;color:var(--tx3);margin-top:2px">BKGリストでCO-LOADを選択した行のm³合計</div>' +
+    '</div>';
     return;
   }
   function numBox(label, id, color) {
@@ -1721,31 +1726,82 @@ function wizRenderCntrInputs(sl, type, saved) {
 function wizUpdateVolSummary() {
   var el = $('wiz-vol-summary'); if (!el) return;
   var rows = wizGetCurrentRows();
-  var tM = rows.filter(function(r){return r.base==='東京';}).reduce(function(s,r){return s+r.vol;},0);
-  var kM = rows.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
-  el.textContent = '東京: '+fmt(tM,1)+' m³　神戸: '+fmt(kM,1)+' m³　合計: '+fmt(tM+kM,1)+' m³';
+  var tM  = rows.filter(function(r){return r.base==='東京';}).reduce(function(s,r){return s+r.vol;},0);
+  var kM  = rows.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
+  var clM = rows.filter(function(r){return r.base==='CO-LOAD';}).reduce(function(s,r){return s+r.vol;},0);
+  var parts = ['東京: '+fmt(tM,1)+' m³', '神戸: '+fmt(kM,1)+' m³'];
+  if(clM>0) parts.push('CO-LOAD: '+fmt(clM,1)+' m³');
+  parts.push('合計: '+fmt(tM+kM+clM,1)+' m³');
+  el.textContent = parts.join('　');
+  // COLOADコンテナ欄にm³を表示
+  ['A','B'].forEach(function(sl){
+    var clDisp=$('wiz-cl-m3-disp-'+sl);
+    if(clDisp) clDisp.textContent = clM>0 ? 'CO-LOAD対象: '+fmt(clM,1)+' m³' : '0 m³';
+  });
 }
 
 window.wizAutoFill = function() {
   var rows = wizGetCurrentRows();
-  var tM = rows.filter(function(r){return r.base==='東京';}).reduce(function(s,r){return s+r.vol;},0);
-  var kM = rows.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
+  var tM  = rows.filter(function(r){return r.base==='東京';}).reduce(function(s,r){return s+r.vol;},0);
+  var kM  = rows.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
+  var clM = rows.filter(function(r){return r.base==='CO-LOAD'||r.isCoload;}).reduce(function(s,r){return s+r.vol;},0);
+
+  // 振り分けルール：≤25m³→20FT、25m³超→40HC（55m³以下目安）
+  function allocate(m3) {
+    if(m3<=0) return {n20:0,n40:0};
+    if(m3<=25) return {n20:1,n40:0};
+    return {n20:0, n40:Math.ceil(m3/50)}; // 40HCはcap50m³として計算
+  }
+
   ['A','B'].forEach(function(sl) {
     var type = wizGetSlotType(sl);
-    if (type === 'COLOAD') return;
-    function getCap(id) {
-      var sel=$(id); if(!sel||!sel.value) return 50;
-      var c=null; allCosts.forEach(function(r){if(r.carrier===sel.value&&r.container_type==='40HC')c=r;});
-      return c ? (nv(c.cap_m3)||50) : 50;
+    if (type === 'COLOAD') {
+      // CO-LOAD欄はm³表示のみ（コンテナ本数設定不要）
+      wizUpdateVolSummary();
+      return;
     }
-    var capT = getCap('wiz-c-t-'+sl);
-    var capK = getCap('wiz-c-k-'+sl);
+    // 船社のcapを取得
+    function getCap(selId, isHC) {
+      var sel=$(selId); if(!sel||!sel.value) return isHC?50:25;
+      var c=null; allCosts.forEach(function(r){if(r.carrier===sel.value&&r.container_type===(isHC?'40HC':'20FT'))c=r;});
+      return c ? (nv(c.cap_m3)||(isHC?50:25)) : (isHC?50:25);
+    }
     var t20El=$('wiz-ct20-'+sl), t40El=$('wiz-ct40-'+sl);
     var k20El=$('wiz-ck20-'+sl), k40El=$('wiz-ck40-'+sl);
-    if(t20El) t20El.value=0;
-    if(t40El) t40El.value = tM>0 ? Math.ceil(tM/capT) : 0;
-    if(k20El) k20El.value=0;
-    if(k40El) k40El.value = kM>0 ? Math.ceil(kM/capK) : 0;
+
+    // 東京
+    var tAlloc = allocate(tM);
+    // 40HCのcapで本数再計算（25超の場合）
+    if(tM>25){
+      var cap40T=getCap('wiz-c-t-'+sl,true);
+      tAlloc.n40=Math.ceil(tM/cap40T);
+    }
+    if(t20El) t20El.value=tAlloc.n20;
+    if(t40El) t40El.value=tAlloc.n40;
+
+    // 神戸（TK型のみ）
+    if(type==='TK'){
+      var kAlloc = allocate(kM);
+      if(kM>25){
+        var cap40K=getCap('wiz-c-k-'+sl,true);
+        kAlloc.n40=Math.ceil(kM/cap40K);
+      }
+      if(k20El) k20El.value=kAlloc.n20;
+      if(k40El) k40El.value=kAlloc.n40;
+    }
+    // OLT型は神戸→東京合流なので東京コンテナに全体(tM+kM)を割り当て
+    if(type==='OLT'){
+      var tkM=tM+kM;
+      var tkAlloc=allocate(tkM);
+      if(tkM>25){
+        var cap40OLT=getCap('wiz-c-t-'+sl,true);
+        tkAlloc.n40=Math.ceil(tkM/cap40OLT);
+      }
+      if(t20El) t20El.value=tkAlloc.n20;
+      if(t40El) t40El.value=tkAlloc.n40;
+      if(k20El) k20El.value=0;
+      if(k40El) k40El.value=0;
+    }
   });
   wizUpdateVolSummary();
   wizCalcPreview();
@@ -1786,12 +1842,19 @@ window.wizAddRow = function(d) {
     destOpts+='<option value="'+t.destination+'"'+(t.destination===d.dest?' selected':'')+'>'+lbl+'</option>';
   });
   var rv=function(k,fb){var n=nv(d[k]!=null?d[k]:(fb||0));return fmt(n,n%1!==0?2:0);};
-  var baseOpts='<option value="東京"'+(d.base==='東京'||!d.base?' selected':'')+'>東京</option><option value="神戸"'+(d.base==='神戸'?' selected':'')+'>神戸</option>';
+  var baseVal = d.base || '東京';
+  var baseOpts=
+    '<option value="東京"'+(baseVal==='東京'?' selected':'')+'>東京</option>'+
+    '<option value="神戸"'+(baseVal==='神戸'?' selected':'')+'>神戸</option>'+
+    '<option value="CO-LOAD"'+(baseVal==='CO-LOAD'?' selected':'')+' style="background:#FEF7E6;color:#7A5400">CO-LOAD</option>';
+  var baseStyle = baseVal==='CO-LOAD'
+    ? 'font-size:11px;padding:3px 5px;background:var(--amber-bg);border-color:var(--amber-brd);color:var(--amber)'
+    : 'font-size:11px;padding:3px 5px;background:#E8F0FF;border-color:var(--blue-brd);color:var(--blue)';
   tr.innerHTML=
     '<td><select class="ri ri-sel wiz-cust-sel" onchange="onWizRowCust('+id+',this)" style="min-width:100px">'+custOpts+'</select></td>'+
     '<td><input class="ri ri-sm" id="wr-vol-'+id+'" type="text" value="'+rv('vol',10)+'" oninput="fmtI(this);wizUpdateVolSummary()"></td>'+
     '<td><select class="ri ri-dest" id="wr-dest-'+id+'" onchange="onWizDestChange('+id+')" style="min-width:80px">'+destOpts+'</select><div id="wr-ts-disp-'+id+'" style="font-size:9px;color:var(--purple)"></div></td>'+
-    '<td style="background:#E8F0FF"><select class="ri" id="wr-base-'+id+'" style="font-size:11px;padding:3px 5px;background:#E8F0FF;border-color:var(--blue-brd);color:var(--blue)">'+baseOpts+'</select></td>'+
+    '<td><select class="ri" id="wr-base-'+id+'" onchange="onWizBaseChange('+id+',this)" style="'+baseStyle+'">'+baseOpts+'</select></td>'+
     '<td><input class="ri ri-sm" id="wr-of-'+id+'"  type="text" value="'+rv('of')+'"  oninput="this.classList.add(\"edited\")"></td>'+
     '<td><input class="ri ri-sm" id="wr-lss-'+id+'" type="text" value="'+rv('lss')+'" oninput="this.classList.add(\"edited\")"></td>'+
     '<td><input class="ri ri-sm" id="wr-pss-'+id+'" type="text" value="'+rv('pss')+'" oninput="this.classList.add(\"edited\")"></td>'+
@@ -1809,6 +1872,18 @@ window.wizAddRow = function(d) {
 };
 
 window.wizDelRow=function(id){var t=$('wiz-row-'+id);if(t)t.remove();wizUpdateVolSummary();};
+
+window.onWizBaseChange=function(id,sel){
+  var v=sel.value;
+  if(v==='CO-LOAD'){
+    sel.style.background='var(--amber-bg)';sel.style.borderColor='var(--amber-brd)';sel.style.color='var(--amber)';
+  } else if(v==='神戸'){
+    sel.style.background='var(--red-bg)';sel.style.borderColor='var(--red-brd)';sel.style.color='var(--red)';
+  } else {
+    sel.style.background='#E8F0FF';sel.style.borderColor='var(--blue-brd)';sel.style.color='var(--blue)';
+  }
+  wizUpdateVolSummary();
+};
 
 window.onWizRowCust=function(id,sel){
   var c=null; customers.forEach(function(x){if(x.id===sel.value)c=x;});
@@ -1849,6 +1924,7 @@ function wizGetCurrentRows() {
     rows.push({
       custId:custId,custName:custName,
       vol:g('vol'),base:$('wr-base-'+id)?$('wr-base-'+id).value:'東京',
+      isCoload: $('wr-base-'+id)?$('wr-base-'+id).value==='CO-LOAD':false,
       dest:dest,tsRate:tsRate,
       tsApply:$('wr-tschk-'+id)?$('wr-tschk-'+id).checked:false,
       of:g('of'),lss:g('lss'),pss:g('pss'),efs:g('efs'),ics:g('ics'),
@@ -1928,11 +2004,15 @@ function wizCalcSlot(slotData, rows, fx, st) {
   var oltHandling= nv(st.oltHandling || ($('wiz-olt-handling') ? $('wiz-olt-handling').value : ($('olt-handling') ? $('olt-handling').value : '1800')));
   var oltTruck   = nv(st.oltTruck    || ($('wiz-olt-truck')    ? $('wiz-olt-truck').value    : '0'));
 
-  var allM = rows.reduce(function(s,r){return s+r.vol;},0);
-  var tM   = rows.filter(function(r){return r.base==='東京';}).reduce(function(s,r){return s+r.vol;},0);
-  var kM   = rows.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
-  var kRows= rows.filter(function(r){return r.base==='神戸';});
-  var tsM  = rows.filter(function(r){return r.tsApply;}).reduce(function(s,r){return s+r.vol;},0);
+  var allM  = rows.reduce(function(s,r){return s+r.vol;},0);
+  var tM    = rows.filter(function(r){return r.base==='東京';}).reduce(function(s,r){return s+r.vol;},0);
+  var kM    = rows.filter(function(r){return r.base==='神戸';}).reduce(function(s,r){return s+r.vol;},0);
+  var clM   = rows.filter(function(r){return r.base==='CO-LOAD'||r.isCoload;}).reduce(function(s,r){return s+r.vol;},0);
+  var kRows = rows.filter(function(r){return r.base==='神戸';});
+  var clRows= rows.filter(function(r){return r.base==='CO-LOAD'||r.isCoload;});
+  // OLT用：東京＋神戸（CO-LOADは通常OLTに回さない）
+  var tkM   = tM + kM;
+  var tsM   = rows.filter(function(r){return r.tsApply;}).reduce(function(s,r){return s+r.vol;},0);
 
   // 売上（共通）
   var totalRev = rows.reduce(function(s,r){
@@ -1973,11 +2053,13 @@ function wizCalcSlot(slotData, rows, fx, st) {
     };
   }
 
-  // REFUND計算
-  function calcRef(m3, C) {
-    if (!C || m3 <= 0) return 0;
-    var tsExclude = allM > 0 ? tsM * (m3 / allM) : 0;
-    var refM3 = Math.max(0, m3 - tsExclude);
+  // REFUND計算（CO-LOAD物量はREFUND対象外）
+  function calcRef(targetM3, C) {
+    if (!C || targetM3 <= 0) return 0;
+    // T/S物量を対象物量比で按分除外
+    var nonClM = tM + kM; // CO-LOAD除外後の全物量
+    var tsExclude = nonClM > 0 ? tsM * (targetM3 / nonClM) : 0;
+    var refM3 = Math.max(0, targetM3 - tsExclude);
     return refM3 * nv(C.refund_per_rt) * fx;
   }
 
@@ -2032,62 +2114,76 @@ function wizCalcSlot(slotData, rows, fx, st) {
 
   // ────────────────────────────────────────────────────────────
   } else if (type === 'COLOAD') {
-    // 東京：東京船社、神戸：CO-LOAD
+    // 東京行：東京船社コンテナ　CO-LOAD行：CO-LOAD業者コスト
     var sT20=selByCarrier(slotData.cT,false), sT40=selByCarrier(slotData.cT,true);
+    // 東京物量で東京コンテナコスト計算
     var dT20=calcCntrDetail(cT20n,tM,sT20,false), dT40=calcCntrDetail(cT40n,tM,sT40,false);
     var tCost = dT20.total+dT40.total;
+    // REFUNDは東京分のみ（CO-LOAD除外）
     refund = calcRef(tM, sT20||sT40);
 
+    // CO-LOAD対象m³：base==='CO-LOAD'の行（なければ神戸行をフォールバック）
+    var coloadM3 = clM > 0 ? clM : kM;
+    var coloadBL = clRows.length > 0 ? clRows.length : kRows.length;
     var clRate=coloadRates.find(function(r){return r.id===slotData.clId;});
     var ofU   = clRate?nv(clRate.of_usd):70,  efsU= clRate?nv(clRate.efs_usd):15;
     var ics2U = clRate?nv(clRate.ics2_usd):25, cfsJ= clRate?nv(clRate.cfs_jpy):4000;
     var thcJ  = clRate?nv(clRate.thc_jpy):1000, drsJ= clRate?nv(clRate.drs_jpy):300;
     var clName= clRate?clRate.name:'未選択（デフォルト値使用）';
-    var clOf  = kM*(ofU+efsU)*fx;
-    var clDom = kM*(cfsJ+thcJ+drsJ);
-    var clIcs = kRows.length*ics2U*fx;
+    var clOf  = coloadM3*(ofU+efsU)*fx;
+    var clDom = coloadM3*(cfsJ+thcJ+drsJ);
+    var clIcs = coloadBL*ics2U*fx;
     clCost    = clOf+clDom+clIcs;
     cntrCostTotal = tCost + clCost;
 
     var carrierT = slotData.cT||'未選択';
-    if(cT20n>0){
-      bdItems.push(bdRow('🚢 東京 20FT×'+cT20n+' ['+carrierT+'] O/F＋固定費', dT20.of+dT20.fix, 'var(--blue)'));
-      bdItems.push(bdRow('　VANNING（東京）', dT20.van));
-      if(dT20.sur>0) bdItems.push(bdRow('　追加サーチャージ（ENS/CSL等）', dT20.sur));
+    if(cT20n>0||cT40n>0){
+      if(tM===0){
+        // 東京物量がない場合は東京コンテナ費ゼロ旨を表示
+        bdItems.push(bdRow('🚢 東京 ['+carrierT+'] ※東京荷主なし', 0, 'var(--tx3)'));
+      } else {
+        if(cT20n>0){
+          bdItems.push(bdRow('🚢 東京 20FT×'+cT20n+' ['+carrierT+'] O/F＋固定費 ('+fmt(tM,1)+'m³)', dT20.of+dT20.fix, 'var(--blue)'));
+          bdItems.push(bdRow('　├ VANNING（東京）', dT20.van));
+          if(dT20.sur>0) bdItems.push(bdRow('　└ 追加サーチャージ（ENS/CSL等）', dT20.sur));
+        }
+        if(cT40n>0){
+          bdItems.push(bdRow('🚢 東京 40HC×'+cT40n+' ['+carrierT+'] O/F＋固定費 ('+fmt(tM,1)+'m³)', dT40.of+dT40.fix, 'var(--blue)'));
+          bdItems.push(bdRow('　├ VANNING（東京）', dT40.van));
+          if(dT40.sur>0) bdItems.push(bdRow('　└ 追加サーチャージ（ENS/CSL等）', dT40.sur));
+        }
+      }
+    } else if(tM>0){
+      bdItems.push(bdRow('⚠️ 東京 ['+carrierT+'] コンテナ本数が0（要設定）', 0, 'var(--red)'));
     }
-    if(cT40n>0){
-      bdItems.push(bdRow('🚢 東京 40HC×'+cT40n+' ['+carrierT+'] O/F＋固定費', dT40.of+dT40.fix, 'var(--blue)'));
-      bdItems.push(bdRow('　VANNING（東京）', dT40.van));
-      if(dT40.sur>0) bdItems.push(bdRow('　追加サーチャージ（ENS/CSL等）', dT40.sur));
-    }
-    bdItems.push(bdRow('📦 CO-LOAD ['+clName+'] O/F＋EFS ('+fmt(kM,1)+'m³×$'+(ofU+efsU)+')', clOf, 'var(--amber)'));
-    bdItems.push(bdRow('　CO-LOAD CFS＋THC＋DRS（国内）', clDom, 'var(--amber)'));
-    if(clIcs>0) bdItems.push(bdRow('　CO-LOAD ICS2 ('+kRows.length+'BL×$'+ics2U+')', clIcs, 'var(--amber)'));
+    bdItems.push(bdRow('📦 CO-LOAD ['+clName+'] O/F＋EFS ('+fmt(coloadM3,1)+'m³×$'+(ofU+efsU)+')', clOf, 'var(--amber)'));
+    bdItems.push(bdRow('　├ CO-LOAD CFS＋THC＋DRS（国内 '+fmt(coloadM3,1)+'m³）', clDom, 'var(--amber)'));
+    if(clIcs>0) bdItems.push(bdRow('　└ CO-LOAD ICS2 ('+coloadBL+'BL×$'+ics2U+')', clIcs, 'var(--amber)'));
 
   // ────────────────────────────────────────────────────────────
   } else if (type === 'OLT') {
-    // 東京・神戸OLT：東京船社に全物量合流
+    // 東京・神戸OLT：東京船社に全物量合流（CO-LOAD行は除外）
     var sT20=selByCarrier(slotData.cT,false), sT40=selByCarrier(slotData.cT,true);
-    var dT20=calcCntrDetail(cT20n,allM,sT20,false), dT40=calcCntrDetail(cT40n,allM,sT40,false);
+    var dT20=calcCntrDetail(cT20n,tkM,sT20,false), dT40=calcCntrDetail(cT40n,tkM,sT40,false);
     var tCost  = dT20.total+dT40.total;
     var oltHandlingCost = kM * oltHandling;
     oltCost = oltTruck + oltHandlingCost;
     cntrCostTotal = tCost + oltCost;
-    refund = calcRef(allM, sT20||sT40);
+    refund = calcRef(tkM, sT20||sT40);
 
     var carrierT = slotData.cT||'未選択';
     if(cT20n>0){
-      bdItems.push(bdRow('🚢 東京 20FT×'+cT20n+' ['+carrierT+'] O/F＋固定費（全'+fmt(allM,1)+'m³）', dT20.of+dT20.fix, 'var(--blue)'));
-      bdItems.push(bdRow('　VANNING（東京）', dT20.van));
-      if(dT20.sur>0) bdItems.push(bdRow('　追加サーチャージ（ENS/CSL等）', dT20.sur));
+      bdItems.push(bdRow('🚢 東京 20FT×'+cT20n+' ['+carrierT+'] O/F＋固定費（東京+神戸 '+fmt(tkM,1)+'m³）', dT20.of+dT20.fix, 'var(--blue)'));
+      bdItems.push(bdRow('　├ VANNING（東京）', dT20.van));
+      if(dT20.sur>0) bdItems.push(bdRow('　└ 追加サーチャージ（ENS/CSL等）', dT20.sur));
     }
     if(cT40n>0){
-      bdItems.push(bdRow('🚢 東京 40HC×'+cT40n+' ['+carrierT+'] O/F＋固定費（全'+fmt(allM,1)+'m³）', dT40.of+dT40.fix, 'var(--blue)'));
-      bdItems.push(bdRow('　VANNING（東京）', dT40.van));
-      if(dT40.sur>0) bdItems.push(bdRow('　追加サーチャージ（ENS/CSL等）', dT40.sur));
+      bdItems.push(bdRow('🚢 東京 40HC×'+cT40n+' ['+carrierT+'] O/F＋固定費（東京+神戸 '+fmt(tkM,1)+'m³）', dT40.of+dT40.fix, 'var(--blue)'));
+      bdItems.push(bdRow('　├ VANNING（東京）', dT40.van));
+      if(dT40.sur>0) bdItems.push(bdRow('　└ 追加サーチャージ（ENS/CSL等）', dT40.sur));
     }
     if(oltTruck>0) bdItems.push(bdRow('🚛 OLTトラック費（神戸→東京）', oltTruck, 'var(--acc)'));
-    bdItems.push(bdRow('　OLT入出庫料（'+fmt(kM,1)+'m³×¥'+fmt(oltHandling)+'/m³）', oltHandlingCost, 'var(--acc)'));
+    bdItems.push(bdRow('　└ OLT入出庫料（'+fmt(kM,1)+'m³×¥'+fmt(oltHandling)+'/m³）', oltHandlingCost, 'var(--acc)'));
   }
 
   if(totalTs>0) bdItems.push(bdRow('🌐 T/Sコスト（買値）', totalTs, 'var(--purple)'));
