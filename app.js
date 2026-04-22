@@ -244,7 +244,7 @@ window.onPatternChange = function() {
     if (clRate) clRate.style.display = type === 'COLOAD' ? '' : 'none';
     // 船社選択UI再描画
     renderSlotCarriers(s, type);
-    // 荷主リストのスロットヘッダー更新
+    // BKGリストのスロットヘッダー更新
     updateSlotHeaders();
   });
   // コンテナパネルタイトル更新
@@ -517,6 +517,12 @@ window.autoFillCntr = function() {
   $('cb-t40').value = tT40 > 0 ? Math.ceil(tT40 / capBT40) : 0;
   $('cb-k20').value = 0;
   $('cb-k40').value = kT40 > 0 ? Math.ceil(kT40 / capBK40) : 0;
+  // CO-LOAD m³：スロット2がCO-LOADの場合、スロット2対象荷主の合計物量を自動セット
+  var t2 = getSlotType(2);
+  if (t2 === 'COLOAD' && $('cb-cl-m3')) {
+    var clM3 = rowsB.reduce(function(s, r) { return s + r.vol; }, 0);
+    $('cb-cl-m3').value = Math.round(clM3 * 10) / 10;
+  }
   calc();
 };
 
@@ -1773,7 +1779,7 @@ async function restoreSimData(data) {
   if ($('cb-k20')) $('cb-k20').value = data.cbK20 || '0';
   if ($('cb-k40')) $('cb-k40').value = data.cbK40 || '0';
 
-  // 荷主リスト（既存行を削除して再構築）
+  // BKGリスト（既存行を削除して再構築）
   var tbody = $('row-body');
   if (tbody) tbody.innerHTML = '';
   rowSeq = 0;
@@ -1914,12 +1920,50 @@ var wizRowSeq = 0;
 
 // ── 初期化 ───────────────────────────────────────────────────
 function wizInitPage() {
-  // 初回のみリセット
+  // シミュレーションのBKGリストを常に最新状態で転写
+  var simRows = getSimRowsForWizard();
+  if (simRows.length > 0) {
+    // ステップ1のベース行として設定（保存済みでなければ上書き）
+    if (!wizPatterns[0].saved) {
+      wizPatterns[0]._simRows = simRows;
+    }
+    // ステップ2/3も保存済みでなければ更新
+    if (!wizPatterns[1].saved) wizPatterns[1]._simRows = simRows;
+    if (!wizPatterns[2].saved) wizPatterns[2]._simRows = simRows;
+  }
   if (wizStep === 1 && !wizPatterns[0].saved) {
     wizReset();
   } else {
     wizRenderStep(wizStep);
   }
+}
+
+// シミュレーション画面のBKGリストをウィザード用フォーマットに変換
+function getSimRowsForWizard() {
+  var rows = [];
+  document.querySelectorAll('#row-body tr').forEach(function(tr) {
+    var id = tr.dataset.rid;
+    if (!id) return;
+    var g = function(f) { var el = document.getElementById('rb-' + f + '-' + id); return el ? nv(el.value) : 0; };
+    var custSel = tr.querySelector('.row-cust-sel');
+    var custId = custSel ? custSel.value : '';
+    var custName = '（未選択）';
+    customers.forEach(function(c) { if (c.id === custId) custName = c.name; });
+    var dest = document.getElementById('rb-dest-' + id) ? document.getElementById('rb-dest-' + id).value : 'RTM';
+    var tsRate = null;
+    if (dest !== 'RTM') tsRates.forEach(function(t) { if (t.destination === dest) tsRate = t; });
+    var baseAEl = document.getElementById('rb-base-a-' + id);
+    rows.push({
+      custId: custId, custName: custName,
+      vol: g('vol'),
+      base: baseAEl ? baseAEl.value : '東京',
+      dest: dest, tsRate: tsRate,
+      tsApply: document.getElementById('rb-tschk-' + id) ? document.getElementById('rb-tschk-' + id).checked : false,
+      of: g('of'), lss: g('lss'), pss: g('pss'), efs: g('efs'), ics: g('ics'),
+      cfs: g('cfs'), thc: g('thc'), drs: g('drs'), bl: g('bl'), ts: g('ts')
+    });
+  });
+  return rows;
 }
 
 window.wizReset = function() {
@@ -1993,7 +2037,7 @@ function wizRenderStep(step) {
   var nextBtn = $('wiz-btn-next');
   nextBtn.textContent = (step === 3) ? '比較へ →' : '次へ →';
 
-  // 荷主リスト描画
+  // BKGリスト描画
   wizBuildRows(step);
 
   // コンテナ構成描画
@@ -2103,7 +2147,7 @@ function wizRenderCntrInputs(type, saved) {
   el.innerHTML = html;
 }
 
-// ── 荷主リスト ────────────────────────────────────────────────
+// ── BKGリスト ────────────────────────────────────────────────
 function wizBuildRows(step) {
   var tbody = $('wiz-row-body');
   if (!tbody) return;
@@ -2111,14 +2155,24 @@ function wizBuildRows(step) {
   wizRowSeq = 0;
 
   var rows = [];
-  // 前ステップからコピー（ステップ2以降）
-  if (step > 1 && wizPatterns[step-2].rows && wizPatterns[step-2].rows.length) {
+  var pat = wizPatterns[step - 1];
+
+  // 優先度: 保存済み行 > 前ステップ行 > シミュレーション転写行 > 空
+  if (pat.rows && pat.rows.length) {
+    // 現ステップに保存済みデータあり
+    rows = pat.rows.map(function(r) { return Object.assign({}, r); });
+  } else if (step > 1 && wizPatterns[step-2].rows && wizPatterns[step-2].rows.length) {
+    // 前ステップからコピー
     rows = wizPatterns[step-2].rows.map(function(r) { return Object.assign({}, r); });
+  } else if (pat._simRows && pat._simRows.length) {
+    // シミュレーション転写
+    rows = pat._simRows.map(function(r) { return Object.assign({}, r); });
+  } else {
+    // シミュレーション画面から直接取得
+    var simRows = getSimRowsForWizard();
+    if (simRows.length > 0) rows = simRows;
   }
-  // 現ステップに保存済みデータがあれば上書き
-  if (wizPatterns[step-1].rows && wizPatterns[step-1].rows.length) {
-    rows = wizPatterns[step-1].rows.map(function(r) { return Object.assign({}, r); });
-  }
+
   rows.forEach(function(r) { wizAddRow(r); });
   if (rows.length === 0) wizAddRow();
 }
@@ -2573,8 +2627,20 @@ function wizRenderResult() {
   // 結論バナー
   var best = validResults.find(function(r){return r.prof===bestProf;});
   var maxDiff = validResults.reduce(function(mx,r){return r===best?mx:Math.max(mx,Math.abs(best.prof-r.prof));},0);
-  $('wiz-concl').innerHTML = '<div class="cbox ok"><p>🏆 <strong>' + best.name + ' が最も有利</strong>（最大差額：' + fmtY(maxDiff) + '）<br>' +
-    '<span style="font-size:11px">' + PATTERN_LABELS[best.type] + '　総売上 ' + fmtY(best.totalRev) + '　総コスト ' + fmtY(best.cost) + '　利益 ' + fmtY(best.prof) + '</span></p></div>';
+  $('wiz-concl').innerHTML =
+    '<div style="background:var(--acc);border-radius:var(--rl);padding:1rem 1.3rem;margin-top:.5rem">' +
+      '<div style="color:#fff;font-size:13px;font-weight:700;margin-bottom:.5rem">🏆 ' + best.name + ' が最も有利</div>' +
+      '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
+        '<div style="background:rgba(255,255,255,.15);border-radius:8px;padding:.5rem 1.1rem;text-align:center">' +
+          '<div style="font-size:10px;color:rgba(255,255,255,.75);margin-bottom:2px">最大差額</div>' +
+          '<div style="font-family:var(--mono);font-size:22px;font-weight:900;color:#fff">' + fmtY(maxDiff) + '</div>' +
+        '</div>' +
+        '<div style="color:rgba(255,255,255,.9);font-size:12px;line-height:1.8">' +
+          PATTERN_LABELS[best.type] + '<br>' +
+          '総売上 ' + fmtY(best.totalRev) + '　総コスト ' + fmtY(best.cost) + '　利益 <strong>' + fmtY(best.prof) + '</strong>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -2599,14 +2665,16 @@ function applyFxRate(rate) {
   if (!rate) return;
   var r = String(rate);
   // EUR/JPYはUSD/JPY×0.92が近似（ECB基準）
-  var eurRate = String(Math.floor(rate * 0.92));
-  // シミュレーション画面
-  if ($('sim-fx'))  $('sim-fx').value  = r;
-  if ($('sim-eur')) $('sim-eur').value = eurRate;
-  // ウィザード（現在表示中のフィールドに適用。各ステップ描画時にも使えるよう変数保持）
+  var eurNum = Math.floor(rate * 0.92);
+  var eurRate = String(eurNum);
+  // グローバル保持（ウィザード描画時に参照）
   window._autoFxJpy = rate;
-  window._autoFxEur = Math.floor(rate * 0.92);
-  if ($('wiz-fx')) $('wiz-fx').value = r;
+  window._autoFxEur = eurNum;
+  // シミュレーション画面
+  if ($('sim-fx'))  { $('sim-fx').value  = r;       }
+  if ($('sim-eur')) { $('sim-eur').value = eurRate;  }
+  // ウィザード（現在表示中のフィールド）
+  if ($('wiz-fx'))  $('wiz-fx').value  = r;
   // ヘッダーに表示
   var lbl = $('conn-lbl');
   if (lbl) {
@@ -2614,6 +2682,8 @@ function applyFxRate(rate) {
     var fxNote = '　💱 USD/JPY ' + r + '  EUR/JPY ' + eurRate + '（自動取得）';
     if (orig.indexOf('💱') < 0) lbl.textContent = orig + fxNote;
   }
+  // EUR反映後に再計算
+  if (typeof calc === 'function') calc();
 }
 
 (async function() {
