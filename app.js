@@ -2155,22 +2155,29 @@ function wizBuildRows(step) {
   wizRowSeq = 0;
 
   var rows = [];
-  var pat = wizPatterns[step - 1];
 
-  // 優先度: 保存済み行 > 前ステップ行 > シミュレーション転写行 > 空
-  if (pat.rows && pat.rows.length) {
-    // 現ステップに保存済みデータあり
-    rows = pat.rows.map(function(r) { return Object.assign({}, r); });
-  } else if (step > 1 && wizPatterns[step-2].rows && wizPatterns[step-2].rows.length) {
-    // 前ステップからコピー
-    rows = wizPatterns[step-2].rows.map(function(r) { return Object.assign({}, r); });
-  } else if (pat._simRows && pat._simRows.length) {
-    // シミュレーション転写
-    rows = pat._simRows.map(function(r) { return Object.assign({}, r); });
+  if (step === 1) {
+    // ステップ1: 保存済み行 > シミュレーション転写 > 空
+    var pat1 = wizPatterns[0];
+    if (pat1.rows && pat1.rows.length) {
+      rows = pat1.rows.map(function(r) { return Object.assign({}, r); });
+    } else {
+      var simRows = getSimRowsForWizard();
+      if (simRows.length > 0) rows = simRows;
+    }
   } else {
-    // シミュレーション画面から直接取得
-    var simRows = getSimRowsForWizard();
-    if (simRows.length > 0) rows = simRows;
+    // ステップ2/3: 常にパターン1のBKGリストをベースにリセット
+    // ただし現ステップに保存済みがあればそれを使う
+    var pat = wizPatterns[step - 1];
+    if (pat.rows && pat.rows.length) {
+      rows = pat.rows.map(function(r) { return Object.assign({}, r); });
+    } else {
+      // パターン1の保存済み or シミュレーション転写
+      var base = wizPatterns[0].rows && wizPatterns[0].rows.length
+        ? wizPatterns[0].rows
+        : getSimRowsForWizard();
+      rows = base.map(function(r) { return Object.assign({}, r); });
+    }
   }
 
   rows.forEach(function(r) { wizAddRow(r); });
@@ -2641,7 +2648,114 @@ function wizRenderResult() {
         '</div>' +
       '</div>' +
     '</div>';
+
+  // 合算比較UIの初期化
+  wizRenderMergeUI(allResults);
 }
+
+// ── 利益合算比較 UI ───────────────────────────────────────────
+function wizRenderMergeUI(allResults) {
+  var grpA = $('wiz-merge-grp-a');
+  var grpB = $('wiz-merge-grp-b');
+  var res  = $('wiz-merge-result');
+  if (!grpA || !grpB) return;
+  if (res) res.innerHTML = '';
+
+  // 有効パターンのみチェックボックスを生成
+  var htmlA = '', htmlB = '';
+  allResults.forEach(function(r, i) {
+    if (!r) return; // スキップは除外
+    var lbl = r.name + '（' + fmtY(r.prof) + '）';
+    htmlA += '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">' +
+      '<input type="checkbox" name="wiz-grp-a" value="' + i + '" style="width:14px;height:14px;accent-color:var(--blue)"> ' + lbl +
+    '</label>';
+    htmlB += '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">' +
+      '<input type="checkbox" name="wiz-grp-b" value="' + i + '" style="width:14px;height:14px;accent-color:var(--red)"> ' + lbl +
+    '</label>';
+  });
+  grpA.innerHTML = htmlA || '<span style="font-size:11px;color:var(--tx3)">有効なパターンなし</span>';
+  grpB.innerHTML = htmlB || '<span style="font-size:11px;color:var(--tx3)">有効なパターンなし</span>';
+}
+
+window.wizCalcMerge = function() {
+  var allResults = wizPatterns.map(function(p) { return wizCalcPattern(p); });
+  var res = $('wiz-merge-result');
+  if (!res) return;
+
+  // 選択されたインデックスを取得
+  var idxA = Array.from(document.querySelectorAll('input[name="wiz-grp-a"]:checked')).map(function(el) { return parseInt(el.value); });
+  var idxB = Array.from(document.querySelectorAll('input[name="wiz-grp-b"]:checked')).map(function(el) { return parseInt(el.value); });
+
+  if (idxA.length === 0 || idxB.length === 0) {
+    res.innerHTML = '<div style="color:var(--red);font-size:12px;padding:.5rem">グループAとグループB両方にパターンを選択してください。</div>';
+    return;
+  }
+
+  // 合算計算
+  function sumGroup(indices) {
+    var rev = 0, cost = 0, prof = 0;
+    var names = [];
+    indices.forEach(function(i) {
+      var r = allResults[i];
+      if (!r) return;
+      rev  += r.totalRev;
+      cost += r.cost;
+      prof += r.prof;
+      names.push(r.name);
+    });
+    return { rev: rev, cost: cost, prof: prof, names: names };
+  }
+
+  var gA = sumGroup(idxA);
+  var gB = sumGroup(idxB);
+  var diff = gA.prof - gB.prof;
+  var aWins = diff > 0;
+  var winnerName = aWins ? gA.names.join('＋') : gB.names.join('＋');
+  var diffAbs = Math.abs(diff);
+
+  // 結果テーブル
+  function groupCol(g, color, bg) {
+    return '<td style="text-align:right;padding:8px 14px;border-bottom:1px solid var(--brd)">' +
+      '<div style="font-size:10px;color:' + color + ';margin-bottom:2px">' + g.names.join(' ＋ ') + '</div>' +
+      '<div style="font-family:var(--mono);font-size:13px">' + fmtY(g.rev) + '</div></td>';
+  }
+
+  var html =
+    '<div style="overflow-x:auto;margin-bottom:.75rem">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr>' +
+      '<th style="text-align:left;padding:6px 10px;border-bottom:2px solid var(--brd);font-size:10px;color:var(--tx2)">項目</th>' +
+      '<th style="text-align:right;padding:6px 14px;border-bottom:2px solid var(--brd);color:var(--blue)">グループA<br><span style="font-weight:400;font-size:10px">' + gA.names.join(' ＋ ') + '</span></th>' +
+      '<th style="text-align:right;padding:6px 14px;border-bottom:2px solid var(--brd);color:var(--red)">グループB<br><span style="font-weight:400;font-size:10px">' + gB.names.join(' ＋ ') + '</span></th>' +
+    '</tr></thead><tbody>' +
+    '<tr><td style="padding:6px 10px;border-bottom:1px solid var(--brd);color:var(--tx2)">総売上</td>' +
+      '<td style="text-align:right;padding:6px 14px;border-bottom:1px solid var(--brd);font-family:var(--mono)">' + fmtY(gA.rev) + '</td>' +
+      '<td style="text-align:right;padding:6px 14px;border-bottom:1px solid var(--brd);font-family:var(--mono)">' + fmtY(gB.rev) + '</td></tr>' +
+    '<tr><td style="padding:6px 10px;border-bottom:1px solid var(--brd);color:var(--tx2)">総コスト</td>' +
+      '<td style="text-align:right;padding:6px 14px;border-bottom:1px solid var(--brd);font-family:var(--mono)">' + fmtY(gA.cost) + '</td>' +
+      '<td style="text-align:right;padding:6px 14px;border-bottom:1px solid var(--brd);font-family:var(--mono)">' + fmtY(gB.cost) + '</td></tr>' +
+    '<tr style="border-top:2px solid var(--tx)">' +
+      '<td style="padding:8px 10px;font-weight:700">合算利益</td>' +
+      (aWins
+        ? '<td style="text-align:right;padding:8px 14px;vertical-align:middle"><div style="display:inline-block;background:var(--acc);color:#fff;border-radius:8px;padding:5px 12px;font-family:var(--mono);font-size:15px;font-weight:900">' + fmtY(gA.prof) + ' 🏆</div></td>' +
+          '<td style="text-align:right;padding:8px 14px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--tx)">' + fmtY(gB.prof) + '</td>'
+        : '<td style="text-align:right;padding:8px 14px;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--tx)">' + fmtY(gA.prof) + '</td>' +
+          '<td style="text-align:right;padding:8px 14px;vertical-align:middle"><div style="display:inline-block;background:var(--acc);color:#fff;border-radius:8px;padding:5px 12px;font-family:var(--mono);font-size:15px;font-weight:900">' + fmtY(gB.prof) + ' 🏆</div></td>') +
+    '</tr></tbody></table></div>' +
+    // 差額バナー
+    '<div style="background:var(--purple);border-radius:var(--rl);padding:.9rem 1.2rem;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
+      '<div style="text-align:center">' +
+        '<div style="font-size:10px;color:rgba(255,255,255,.75);margin-bottom:2px">合算最大差額</div>' +
+        '<div style="font-family:var(--mono);font-size:22px;font-weight:900;color:#fff">' + fmtY(diffAbs) + '</div>' +
+      '</div>' +
+      '<div style="color:rgba(255,255,255,.9);font-size:12px">' +
+        '🏆 <strong>' + winnerName + '</strong> の合算が有利<br>' +
+        'グループA ' + fmtY(gA.prof) + '　vs　グループB ' + fmtY(gB.prof) +
+      '</div>' +
+    '</div>';
+
+  res.innerHTML = html;
+};
 
 // ── Init ──────────────────────────────────────────────────────
 // ── 為替レート自動取得（TTS近似） ────────────────────────────

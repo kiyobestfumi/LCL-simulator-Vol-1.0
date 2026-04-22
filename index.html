@@ -314,6 +314,26 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       </div>
       <div id="wiz-concl" style="margin-top:.75rem"></div>
     </div>
+
+    <!-- 利益合算比較 -->
+    <div class="card" id="wiz-merge-card" style="border-color:var(--purple-brd)">
+      <div class="ct" style="color:var(--purple)">利益合算比較
+        <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.5rem">グループAとグループBにパターンを振り分けて、合算利益を比較できます</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.75rem">
+        <div style="background:var(--blue-bg);border:1px solid var(--blue-brd);border-radius:var(--r);padding:.7rem .9rem">
+          <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.5rem">グループ A</div>
+          <div id="wiz-merge-grp-a" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div style="background:var(--red-bg);border:1px solid var(--red-brd);border-radius:var(--r);padding:.7rem .9rem">
+          <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:.5rem">グループ B</div>
+          <div id="wiz-merge-grp-b" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+      <button class="btn btn-a" onclick="wizCalcMerge()" style="margin-bottom:.75rem">合算利益を比較する</button>
+      <div id="wiz-merge-result"></div>
+    </div>
+
     <div style="display:flex;gap:8px;margin-top:.5rem">
       <button class="btn" onclick="wizBackToEdit()">← 修正に戻る</button>
     </div>
