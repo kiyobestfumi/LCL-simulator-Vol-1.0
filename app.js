@@ -564,24 +564,6 @@ window.addRow = function(d) {
     '<td><select class="ri ri-sel row-cust-sel" onchange="onRowCust(' + id + ',this)">' + custOpts + '</select></td>' +
     '<td><input class="ri ri-sm" id="rb-vol-' + id + '" type="text" value="' + rv('vol', 10) + '" oninput="fmtI(this);onVolChange(' + id + ')"></td>' +
     '<td><select class="ri ri-dest" id="rb-dest-' + id + '" onchange="onDestChange(' + id + ')">' + destOpts + '</select><div id="rb-ts-disp-' + id + '" style="font-size:9px;color:var(--purple);margin-top:1px"></div></td>' +
-    // スロット1列：チェック＋拠点
-    '<td style="background:#E8F0FF;padding:3px 5px;min-width:90px">' +
-      '<label style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--blue);cursor:pointer;margin-bottom:3px">' +
-        '<input type="checkbox" id="rb-use-a-' + id + '" checked onchange="calc()" style="width:12px;height:12px;accent-color:var(--blue)"> スロット1' +
-      '</label>' +
-      '<select class="ri" id="rb-base-a-' + id + '" onchange="calc()" style="font-size:11px;font-family:var(--sans);background:#E8F0FF;border-color:var(--blue-brd);color:var(--blue);padding:2px 4px;width:100%">' +
-        '<option value="東京">東京</option><option value="神戸">神戸</option>' +
-      '</select>' +
-    '</td>' +
-    // スロット2列：チェック＋拠点
-    '<td style="background:#E8F5EE;padding:3px 5px;min-width:90px">' +
-      '<label style="display:flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--acc);cursor:pointer;margin-bottom:3px">' +
-        '<input type="checkbox" id="rb-use-b-' + id + '" checked onchange="calc()" style="width:12px;height:12px;accent-color:var(--acc)"> スロット2' +
-      '</label>' +
-      '<select class="ri" id="rb-base-b-' + id + '" onchange="calc()" style="font-size:11px;font-family:var(--sans);background:#E8F5EE;border-color:var(--acc-brd);color:var(--acc);padding:2px 4px;width:100%">' +
-        '<option value="東京">東京</option><option value="神戸">神戸</option>' +
-      '</select>' +
-    '</td>' +
     '<td><input class="ri ri-sm" id="rb-of-' + id + '" type="text" value="' + rv('of_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-lss-' + id + '" type="text" value="' + rv('lss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-pss-' + id + '" type="text" value="' + rv('pss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
@@ -605,14 +587,6 @@ window.addRow = function(d) {
     '<td><button class="del-row" onclick="delRow(' + id + ')">✕</button></td>';
 
   $('row-body').appendChild(tr);
-  // 初期拠点設定（A・B共通で顧客マスターの拠点を反映）
-  if (d.simBase) {
-    var baseAEl = $('rb-base-a-' + id);
-    var baseBEl = $('rb-base-b-' + id);
-    if (baseAEl) baseAEl.value = d.simBase;
-    if (baseBEl) baseBEl.value = d.simBase;
-  }
-  if (d.baseB) { var bEl = $('rb-base-b-' + id); if (bEl) bEl.value = d.baseB; }
 };
 
 window.delRow = function(id) {
@@ -674,11 +648,6 @@ window.onRowCust = function(id, sel) {
   s('bl', c.bl_fee_sell); s('decl', c.customs_declaration_jpy);
   s('chand', c.customs_handling_jpy); s('ot', c.other_fee);
   s('ds', c.oversea_sell); s('dc', c.oversea_cost); s('ts', c.ts_sell);
-  var bi = baseInfo(c.origin);
-  var baseAEl = $('rb-base-a-' + id);
-  var baseBEl = $('rb-base-b-' + id);
-  if (baseAEl) baseAEl.value = bi.simBase;
-  if (baseBEl) baseBEl.value = bi.simBase;
   var destSel = $('rb-dest-' + id);
   if (destSel) { destSel.value = c.destination || 'RTM'; onDestChange(id); return; }
   calc();
@@ -702,10 +671,13 @@ function getRows() {
     var tsRate = null;
     if (dest !== 'RTM') tsRates.forEach(function(t) { if (t.destination === dest) tsRate = t; });
     var tsApply = $('rb-tschk-' + id) ? $('rb-tschk-' + id).checked : false;
-    var useA    = $('rb-use-a-' + id) ? $('rb-use-a-' + id).checked : true;
-    var useB    = $('rb-use-b-' + id) ? $('rb-use-b-' + id).checked : true;
-    var baseA   = $('rb-base-a-' + id) ? $('rb-base-a-' + id).value : '東京';
-    var baseB   = $('rb-base-b-' + id) ? $('rb-base-b-' + id).value : '東京';
+    // スロット列削除済み：拠点は顧客マスターのoriginから自動判定
+    var custObj = null;
+    if (custId) customers.forEach(function(c) { if (c.id === custId) custObj = c; });
+    var autoBase = custObj ? baseInfo(custObj.origin).simBase : '東京';
+    var baseA = autoBase;
+    var baseB = autoBase;
+    var useA = true; var useB = true;
     rows.push({
       id: id, custName: custName,
       base: baseA,   // 後方互換（パターンA拠点を代表値として使用）
@@ -1667,9 +1639,17 @@ function wizRenderStep(step) {
       lb.classList.toggle('pt-active', lb.dataset.val === type);
     });
     wizRenderSlotCarriers(sl, type, saved);
-    // 名称
+    // 名称：保存済みがあればそれを使用、なければ自動生成
     var nameEl = $('wiz-name' + sl);
-    if (nameEl) nameEl.value = saved.name || ('ステップ' + step + '-' + sl);
+    if (nameEl) {
+      if (saved.name) {
+        nameEl.value = saved.name;
+        nameEl.dataset.auto = '0';
+      } else {
+        nameEl.value = 'スロット' + sl + '（' + (WIZ_TYPE_LABELS[type] || type) + '）';
+        nameEl.dataset.auto = '1';
+      }
+    }
   });
 
   // ナビ
@@ -1704,6 +1684,12 @@ window.onWizSlotTypeChange = function(sl) {
   document.querySelectorAll('.wt-btn[data-slot="' + sl + '"]').forEach(function(lb) {
     lb.classList.toggle('pt-active', lb.dataset.val === type);
   });
+  // スロット名称を自動生成
+  var nameEl = $('wiz-name' + sl);
+  if (nameEl && (!nameEl.value || nameEl.dataset.auto === '1')) {
+    nameEl.value = 'スロット' + sl + '（' + (WIZ_TYPE_LABELS[type] || type) + '）';
+    nameEl.dataset.auto = '1';
+  }
   wizRenderSlotCarriers(sl, type, {});
   wizRenderCntrInputs(sl, type, {});
   wizUpdateVolSummary();
@@ -2084,65 +2070,65 @@ window.wizCalcPreview = function() {
 
 // ── 比較結果描画（最大6パターン） ────────────────────────────
 function wizRenderResult() {
-  // 全6スロット（ステップ1A/1B/2A/2B/3A/3B）を計算
-  var allSlots = [];
+  // 有効なスロットのみ収集（SKIPステップは完全除外）
+  var validSlots = [];
+  var stepLabels = [];
+  var stepColors = ['var(--blue)','var(--acc)','var(--blue)','var(--acc)','var(--blue)','var(--acc)'];
+  var stepColorIdx = 0;
+
   wizSteps.forEach(function(st, si) {
-    if (!st || st.skipped || !st.saved) {
-      allSlots.push(null, null);
-      return;
-    }
+    if (!st || st.skipped || !st.saved) return; // SKIPは列ごと除外
     var fx = nv(st.fx||155);
     var rows = st.rows || [];
     ['A','B'].forEach(function(sl) {
       var sd = Object.assign({_sl:sl}, sl==='A'?st.slotA:st.slotB);
-      allSlots.push(wizCalcSlot(sd, rows, fx));
+      var res = wizCalcSlot(sd, rows, fx);
+      if (res) {
+        validSlots.push(res);
+        stepLabels.push('S'+(si+1)+'-'+sl);
+      }
     });
   });
 
-  var validSlots = allSlots.filter(Boolean);
   if (validSlots.length < 2) {
     $('wiz-cmp-head').innerHTML = '';
-    $('wiz-cmp-body').innerHTML = '<tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--tx3)">有効なパターンが2つ以上必要です</td></tr>';
+    $('wiz-cmp-body').innerHTML = '<tr><td colspan="5" style="padding:2rem;text-align:center;color:var(--tx3)">有効なパターンが2つ以上必要です</td></tr>';
     $('wiz-concl').innerHTML = '';
-    wizRenderMergeUI(allSlots);
+    wizRenderMergeUI(validSlots, stepLabels);
     return;
   }
 
   var bestProf = -Infinity;
   validSlots.forEach(function(r){if(r.prof>bestProf)bestProf=r.prof;});
 
-  // ヘッダー
-  var stepLabels = ['S1-A','S1-B','S2-A','S2-B','S3-A','S3-B'];
-  var stepColors = [
-    'var(--blue)','var(--acc)',
-    'var(--blue)','var(--acc)',
-    'var(--blue)','var(--acc)'
-  ];
-  var hCols = allSlots.map(function(r,i) {
-    if (!r) return '<th style="color:var(--tx3);background:var(--sur2);font-size:10px;text-decoration:line-through">'+stepLabels[i]+'<br>SKIP</th>';
+  // ヘッダー（有効スロットのみ）
+  var hCols = validSlots.map(function(r, i) {
     var isBest = r.prof === bestProf;
-    var color = isBest ? '#fff' : stepColors[i];
+    var color = isBest ? '#fff' : stepColors[i % stepColors.length];
     var bg    = isBest ? 'var(--acc)' : '';
-    return '<th style="color:'+color+';background:'+bg+';padding:6px 10px">' +
-      stepLabels[i] + (isBest?' 🏆':'') + '<br><span style="font-size:10px;font-weight:400">' + r.name + '</span></th>';
+    return '<th style="color:'+color+';background:'+bg+';padding:6px 10px;min-width:120px">' +
+      stepLabels[i] + (isBest?' 🏆':'') +
+      '<br><span style="font-size:10px;font-weight:400">' + r.name + '</span></th>';
   }).join('');
 
   $('wiz-cmp-head').innerHTML =
-    '<tr><th style="text-align:left;font-size:10px;color:var(--tx2)">項目</th>' + hCols + '<th style="font-size:10px;color:var(--tx3)">差額</th></tr>';
+    '<tr><th style="text-align:left;font-size:10px;color:var(--tx2);min-width:120px">項目</th>' +
+    hCols + '<th style="font-size:10px;color:var(--tx3);min-width:70px">差額</th></tr>';
 
   // 行生成ヘルパー
   function simRow(label, getter, isProf) {
-    var cells = allSlots.map(function(r,i) {
-      if (!r) return '<td class="wv" style="color:var(--tx3)">─</td>';
+    var cells = validSlots.map(function(r, i) {
       var v = getter(r);
       var isBest = isProf && v === bestProf;
-      if (isBest) return '<td style="text-align:right;vertical-align:middle"><div style="display:inline-block;background:var(--acc);color:#fff;border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:14px;font-weight:900">'+fmtY(v)+' 🏆</div></td>';
-      var txt = (typeof v === 'number' && Math.abs(v) < 1000 && label.indexOf('m³') >= 0) ? fmt(v,1)+' m³' : fmtY(v);
-      return '<td class="wv"'+(v<0&&isProf?' style="color:var(--red)"':'')+'>'+txt+'</td>';
+      if (isBest) return '<td style="text-align:right;vertical-align:middle;padding:5px 10px">' +
+        '<div style="display:inline-block;background:var(--acc);color:#fff;border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:14px;font-weight:900">'+fmtY(v)+' 🏆</div></td>';
+      var isM3 = label.indexOf('m³') >= 0;
+      var txt = isM3 ? fmt(v,1)+' m³' : fmtY(v);
+      return '<td class="wv"' + (v<0&&isProf?' style="color:var(--red)"':'') + '>' + txt + '</td>';
     }).join('');
-    // 差額（最大 vs 最小）
+    // 差額（最大 - 最小）
     var vals = validSlots.map(getter);
-    var mx=Math.max.apply(null,vals), mn=Math.min.apply(null,vals);
+    var mx = Math.max.apply(null,vals), mn = Math.min.apply(null,vals);
     var diff = mx - mn;
     var diffCell = isProf
       ? '<td class="wdiff" style="font-size:12px;font-weight:700;color:var(--purple)">' + (diff<1?'同等':fmtY(diff)) + '</td>'
@@ -2150,7 +2136,7 @@ function wizRenderResult() {
     return '<tr><td style="padding:5px 10px;font-size:12px;color:var(--tx2)">'+label+'</td>'+cells+diffCell+'</tr>';
   }
   function secRow(label) {
-    return '<tr><td colspan="'+(allSlots.length+2)+'" style="background:var(--sur2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);padding:4px 10px">'+label+'</td></tr>';
+    return '<tr><td colspan="'+(validSlots.length+2)+'" style="background:var(--sur2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);padding:4px 10px">'+label+'</td></tr>';
   }
 
   var bodyHtml = '';
@@ -2163,7 +2149,7 @@ function wizRenderResult() {
   var hasTs = validSlots.some(function(r){return r.totalTs!==0;});
   if(hasTs) bodyHtml += simRow('T/Sコスト', function(r){return r.totalTs||0;});
   bodyHtml += '<tr style="border-top:2px solid var(--brd2)"><td style="padding:6px 10px;font-weight:700;font-size:12px">総コスト</td>' +
-    allSlots.map(function(r){return r?'<td class="wv"><strong>'+fmtY(r.cost)+'</strong></td>':'<td class="wv" style="color:var(--tx3)">─</td>';}).join('')+'<td></td></tr>';
+    validSlots.map(function(r){return '<td class="wv"><strong>'+fmtY(r.cost)+'</strong></td>';}).join('') + '<td></td></tr>';
   bodyHtml += secRow('売上・粗利');
   bodyHtml += simRow('総売上', function(r){return r.totalRev;});
   bodyHtml += simRow('粗利', function(r){return r.prof;}, true);
@@ -2185,38 +2171,31 @@ function wizRenderResult() {
       '</div>' +
     '</div>';
 
-  wizRenderMergeUI(allSlots);
+  wizRenderMergeUI(validSlots, stepLabels);
 }
 
 // ── 利益合算比較UI ────────────────────────────────────────────
-function wizRenderMergeUI(allSlots) {
+function wizRenderMergeUI(validSlots, stepLabels) {
   var grpA = $('wiz-merge-grp-a');
   var grpB = $('wiz-merge-grp-b');
   var res  = $('wiz-merge-result');
   if (!grpA||!grpB) return;
   if (res) res.innerHTML = '';
-  var stepLabels = ['S1-A','S1-B','S2-A','S2-B','S3-A','S3-B'];
   var htmlA='',htmlB='';
-  allSlots.forEach(function(r,i){
+  (validSlots||[]).forEach(function(r,i){
     if(!r)return;
-    var lbl=stepLabels[i]+': '+r.name+'（'+fmtY(r.prof)+'）';
+    var lbl=(stepLabels&&stepLabels[i]?stepLabels[i]+': ':'')+r.name+'（'+fmtY(r.prof)+'）';
     htmlA+='<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" name="wiz-grp-a" value="'+i+'" style="width:14px;height:14px;accent-color:var(--blue)"> '+lbl+'</label>';
     htmlB+='<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" name="wiz-grp-b" value="'+i+'" style="width:14px;height:14px;accent-color:var(--red)"> '+lbl+'</label>';
   });
   grpA.innerHTML = htmlA||'<span style="font-size:11px;color:var(--tx3)">有効なパターンなし</span>';
   grpB.innerHTML = htmlB||'<span style="font-size:11px;color:var(--tx3)">有効なパターンなし</span>';
+  // validSlotsをwindowに保持してwizCalcMergeから参照
+  window._wizValidSlots = validSlots || [];
 }
 
 window.wizCalcMerge = function() {
-  var allSlots = [];
-  wizSteps.forEach(function(st,si){
-    if(!st||st.skipped||!st.saved){allSlots.push(null,null);return;}
-    var fx=nv(st.fx||155); var rows=st.rows||[];
-    ['A','B'].forEach(function(sl){
-      var sd=Object.assign({_sl:sl},sl==='A'?st.slotA:st.slotB);
-      allSlots.push(wizCalcSlot(sd,rows,fx));
-    });
-  });
+  var allSlots = window._wizValidSlots || [];
   var res=$('wiz-merge-result'); if(!res)return;
   var idxA=Array.from(document.querySelectorAll('input[name="wiz-grp-a"]:checked')).map(function(el){return parseInt(el.value);});
   var idxB=Array.from(document.querySelectorAll('input[name="wiz-grp-b"]:checked')).map(function(el){return parseInt(el.value);});
