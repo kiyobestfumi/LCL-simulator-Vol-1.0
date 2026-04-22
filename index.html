@@ -229,6 +229,8 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div style="margin-left:auto;display:flex;gap:8px">
       <button class="btn btn-sm" onclick="wizReset()" style="font-size:11px;color:var(--red);border-color:var(--red-brd)">🔄 最初から</button>
     </div>
+    <!-- skip buttons per step (shown/hidden by JS) -->
+    <div id="wiz-step-skip-btns" style="display:none"></div>
   </div>
 
   <!-- ステップ1〜3（共通テンプレート、JSで切り替え） -->
@@ -478,7 +480,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         </select>
       </div>
       <div class="f"><label>為替 USD/JPY</label><input type="text" id="sim-fx" value="155" oninput="fmtI(this);calc()"></div>
-      <div class="f"><label>EUR/JPY（HMM EES用）</label><input type="text" id="sim-eur" value="165" oninput="fmtI(this);calc()"></div>
+      <div class="f"><label>EUR/JPY（HMM EES用）</label><input type="text" id="sim-eur" value="187" oninput="fmtI(this);calc()"></div>
     </div>
     <div id="agent-info" style="margin-top:.3rem"></div>
   </div>
@@ -571,39 +573,16 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div class="sc"><div class="sl">総売上</div><div class="sv" id="sv-rev">-</div></div>
   </div>
 
-  <!-- ⑦ 3パターン比較結果 -->
-  <div class="card" id="result-card" style="display:none">
-    <div class="ct">3パターン 粗利比較</div>
-    <div style="overflow-x:auto">
-      <table id="cmp-table" style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead>
-          <tr>
-            <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);width:30%">項目</th>
-            <th id="th-p1" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;background:var(--acc-bg);color:var(--acc)">①OLT合算<br><span style="font-size:10px;font-weight:400">神戸OLT→東京合流</span></th>
-            <th id="th-p2" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;background:var(--amber-bg);color:var(--amber)">②CO-LOAD＋東京独立<br><span style="font-size:10px;font-weight:400">神戸CO-LOAD＋東京自社</span></th>
-            <th id="th-p3" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;background:var(--blue-bg);color:var(--blue)">③東京・神戸独立<br><span style="font-size:10px;font-weight:400">各拠点自社仕立て</span></th>
-            <th style="padding:7px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:2px solid var(--brd);text-align:right;width:8%">最大差額</th>
-          </tr>
-        </thead>
-        <tbody id="cmp-body"></tbody>
-      </table>
-    </div>
-    <div id="concl" style="margin-top:.75rem"></div>
-    <div style="margin-top:.75rem">
-      <button onclick="toggleCbDetail()" style="font-family:var(--sans);font-size:12px;color:var(--tx2);border:1px solid var(--brd2);background:var(--sur2);border-radius:var(--r);padding:4px 14px;cursor:pointer" id="cb-toggle-btn">▶ BKG内訳を表示</button>
-      <div id="cb-detail" style="display:none;margin-top:.6rem">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">①OLT合算 BKG内訳</div><div id="cb-p1"></div></div>
-          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:.4rem">②CO-LOAD＋東京独立 BKG内訳</div><div id="cb-p2"></div></div>
-          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem">③東京・神戸独立 BKG内訳</div><div id="cb-p3"></div></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:.75rem">
-          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">①コスト明細</div><div id="det-p1"></div></div>
-          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:.4rem">②コスト明細</div><div id="det-p2"></div></div>
-          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem">③コスト明細</div><div id="det-p3"></div></div>
-        </div>
-      </div>
-    </div>
+  <!-- ⑦ 3パターン比較結果（削除済み） -->
+  <div id="result-card" style="display:none">
+    <div id="cmp-body" style="display:none"></div>
+    <div id="concl" style="display:none"></div>
+    <div id="cb-p1" style="display:none"></div>
+    <div id="cb-p2" style="display:none"></div>
+    <div id="cb-p3" style="display:none"></div>
+    <div id="det-p1" style="display:none"></div>
+    <div id="det-p2" style="display:none"></div>
+    <div id="det-p3" style="display:none"></div>
   </div>
 
   <!-- 保存・共有カード -->

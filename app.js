@@ -858,114 +858,15 @@ window.calc = function() {
   var profP3 = totalRev - costP3 + refP3;
 
   // 船社チェック
-  var hasT = selT20 || selT40;
-  var hasK = selK20 || selK40;
   if (!rows.length) {
-    $('result-card').style.display = 'none';
     if ($('save-card')) $('save-card').style.display = 'none';
     return;
   }
 
-  // ── 比較テーブル生成 ──────────────────────────────────────────
-  var profs = [profP1, profP2, profP3];
-  var costs = [costP1, costP2, costP3];
-  var refs  = [refP1,  refP2,  refP3];
-  var cntrCosts = [cntrCostP1, cntrCostP2, cntrCostP3];
-  var bestProf = Math.max(profP1, profP2, profP3);
-  var worstProf = Math.min(profP1, profP2, profP3);
-  var maxDiff = bestProf - worstProf;
-  var colors = ['var(--acc)', 'var(--amber)', 'var(--blue)'];
-  var bgs    = ['var(--acc-bg)', 'var(--amber-bg)', 'var(--blue-bg)'];
-
-  function simRow(label, vals, cls, isProf) {
-    var bestV = isProf ? Math.max.apply(null, vals) : null;
-    var cells = vals.map(function(v, i) {
-      var isBest = isProf && v === bestV;
-      if (isBest) {
-        return '<td style="text-align:right;padding:6px 12px;vertical-align:middle">' +
-          '<div style="display:inline-block;background:' + colors[i] + ';color:#fff;border-radius:8px;padding:4px 12px;font-family:var(--mono);font-size:15px;font-weight:900;box-shadow:0 2px 6px rgba(0,0,0,.2)">' +
-          fmtY(v) + ' 🏆</div></td>';
-      }
-      return '<td style="text-align:right;padding:6px 12px;font-family:var(--mono);font-size:12px' +
-        (v < 0 ? ';color:var(--red)' : '') + '">' + fmtY(v) + '</td>';
-    }).join('');
-    // 最大差額列（利益行のみ差額を表示）
-    var diffCell = '<td></td>';
-    if (isProf) {
-      diffCell = '<td style="text-align:right;padding:6px 8px;font-family:var(--mono);font-size:13px;font-weight:700;color:' +
-        (maxDiff < 1 ? 'var(--tx3)' : 'var(--purple)') + '">' +
-        (maxDiff < 1 ? '同等' : fmtY(maxDiff)) + '</td>';
-    }
-    return '<tr class="' + (cls||'') + '"><td style="padding:5px 10px;border-bottom:1px solid var(--brd);font-size:12px;color:var(--tx2)">' + label + '</td>' + cells + diffCell + '</tr>';
-  }
-  function simSecRow(label) {
-    return '<tr><td colspan="5" style="background:var(--sur2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);padding:4px 10px">' + label + '</td></tr>';
-  }
-
-  var bodyHtml = '';
-  bodyHtml += simSecRow('物量');
-  bodyHtml += simRow('東京 m³', [tM, tM, tM]);
-  bodyHtml += simRow('神戸 m³', [kM, kM, kM]);
-  bodyHtml += simRow('合計 m³', [allM, allM, allM]);
-
-  bodyHtml += simSecRow('コスト');
-  bodyHtml += simRow('コンテナ/OLT/CO-LOADコスト', cntrCosts);
-  if (totalTs !== 0) bodyHtml += simRow('T/Sコスト', [totalTs, totalTs, totalTs]);
-  if (agentCost !== 0) bodyHtml += simRow('AGENTコスト', [agentCost, agentCost, agentCost]);
-  bodyHtml += '<tr class="cmp-total"><td style="padding:6px 10px;font-weight:700;border-top:2px solid var(--brd2)">総コスト</td>' +
-    costs.map(function(c,i){ return '<td style="text-align:right;padding:6px 12px;font-family:var(--mono);font-weight:700;border-top:2px solid var(--brd2)">' + fmtY(c) + '</td>'; }).join('') + '<td style="border-top:2px solid var(--brd2)"></td></tr>';
-
-  bodyHtml += simSecRow('売上・粗利');
-  bodyHtml += simRow('総売上', [totalRev, totalRev, totalRev]);
-  if (refP1 > 0 || refP2 > 0 || refP3 > 0) bodyHtml += simRow('REFUND', refs);
-
-  // 利益行（強調）
-  bodyHtml += simRow('粗利（REFUND込）', profs, 'cmp-profit', true);
-
-  $('cmp-body').innerHTML = bodyHtml;
-
-  // 結論バナー
-  var bestIdx = profs.indexOf(bestProf);
-  var pNames = ['①OLT合算', '②CO-LOAD＋東京独立', '③東京・神戸独立'];
-  $('concl').innerHTML =
-    '<div style="background:' + colors[bestIdx] + ';border-radius:var(--rl);padding:1rem 1.3rem;display:flex;align-items:center;gap:16px;flex-wrap:wrap">' +
-      '<div style="background:rgba(255,255,255,.15);border-radius:8px;padding:.5rem 1.1rem;text-align:center">' +
-        '<div style="font-size:10px;color:rgba(255,255,255,.75);margin-bottom:2px">最大差額</div>' +
-        '<div style="font-family:var(--mono);font-size:22px;font-weight:900;color:#fff">' + fmtY(maxDiff) + '</div>' +
-      '</div>' +
-      '<div style="color:rgba(255,255,255,.9);font-size:13px;font-weight:700">' +
-        '🏆 ' + pNames[bestIdx] + ' が最も有利<br>' +
-        '<span style="font-size:11px;font-weight:400">総売上 ' + fmtY(totalRev) + '　総コスト ' + fmtY(costs[bestIdx]) + '　粗利 ' + fmtY(bestProf) + '</span>' +
-      '</div>' +
-    '</div>';
-
-  // BKG内訳
-  function buildBkgHtml(targetRows) {
-    return targetRows.map(function(r){
-      var rev=(r.of+r.lss+r.pss+r.efs)*r.vol*fx+r.ics*fx+(r.tsApply?r.ts*r.vol*fx:0)+(r.cfs+r.thc+r.drs)*r.vol+r.bl+r.decl+r.chand+r.ot+r.ds*fx;
-      var bi=baseInfo(r.baseA==='東京'?'TOKYO':'KOBE');
-      return '<div class="cb-row"><span class="cb-name">'+r.custName+'</span><span class="cb-tag '+bi.tagCls+'">'+bi.label+'</span><span class="cb-vol">'+fmt(r.vol,1)+'m³</span><span class="cb-sell">'+fmtY(rev)+'</span></div>';
-    }).join('') || '<div style="font-size:11px;color:var(--tx3);padding:4px">（なし）</div>';
-  }
-  if ($('cb-p1')) $('cb-p1').innerHTML = buildBkgHtml(rows);
-  if ($('cb-p2')) $('cb-p2').innerHTML = buildBkgHtml(rows);
-  if ($('cb-p3')) $('cb-p3').innerHTML = buildBkgHtml(rows);
-
-  // コスト明細
-  function buildDetHtml(cntrCostVal, cntrBreak, oltForSlot, clName, clCostVal, isCoload, isOlt) {
-    var d = [];
-    if (isOlt && oltForSlot > 0) d.push('<div style="color:var(--blue);font-size:11px">OLTトラック＋入出庫料: ' + fmtY(oltForSlot) + '</div>');
-    if (isCoload && clCostVal > 0) d.push('<div style="color:var(--amber);font-size:11px">CO-LOAD [' + clName + ']: ' + fmtY(clCostVal) + '</div>');
-    d.push('<div style="font-size:11px">コンテナコスト計: ' + fmtY(cntrCostVal) + '</div>');
-    if (totalTs !== 0) d.push('<div style="font-size:11px;color:var(--purple)">T/Sコスト: ' + fmtY(totalTs) + '</div>');
-    return d.join('');
-  }
-  if ($('det-p1')) $('det-p1').innerHTML = buildDetHtml(cntrCostP1, '', oltObj.total, '', 0, false, true);
-  if ($('det-p2')) $('det-p2').innerHTML = buildDetHtml(cntrCostP2, '', 0, clRate?clRate.name:'未選択', coloadCostP2, true, false);
-  if ($('det-p3')) $('det-p3').innerHTML = buildDetHtml(cntrCostP3, '', 0, '', 0, false, false);
-
-  $('result-card').style.display = 'block';
-  if ($('save-card')) $('save-card').style.display = '';
+  // ── 3パターン比較テーブルは削除済み（ウィザードで行う） ──────
+  // sum-bar と save-card のみ更新
+  $('result-card').style.display = 'none'; // 非表示固定
+  if ($('save-card')) $('save-card').style.display = rows.length > 0 ? '' : 'none';
 };
 
 
@@ -1558,6 +1459,34 @@ async function loadFromShareCode(code) {
 // ── ウィザード（パターン比較）スロットA/B×ステップ1〜3 ──────
 // ══════════════════════════════════════════════════════════════
 
+// ── シミュレーションBKGをウィザード用行データに変換 ───────────
+function getSimRowsForWizard() {
+  var rows = [];
+  document.querySelectorAll('#row-body tr').forEach(function(tr) {
+    var id = tr.dataset.rid;
+    var g = function(f) { var el = document.getElementById('rb-' + f + '-' + id); return el ? nv(el.value) : 0; };
+    var custId = '';
+    var custSel = tr.querySelector('.row-cust-sel');
+    if (custSel) custId = custSel.value;
+    var custName = '（未選択）';
+    var custObj = null;
+    customers.forEach(function(c) { if (c.id === custId) { custName = c.name; custObj = c; } });
+    var dest = document.getElementById('rb-dest-' + id) ? document.getElementById('rb-dest-' + id).value : 'RTM';
+    var tsRate = null;
+    if (dest !== 'RTM') tsRates.forEach(function(t) { if (t.destination === dest) tsRate = t; });
+    var tsApply = document.getElementById('rb-tschk-' + id) ? document.getElementById('rb-tschk-' + id).checked : false;
+    var autoBase = custObj ? baseInfo(custObj.origin).simBase : '東京';
+    rows.push({
+      custId: custId, custName: custName,
+      vol: g('vol'), base: autoBase,
+      dest: dest, tsRate: tsRate, tsApply: tsApply,
+      of: g('of'), lss: g('lss'), pss: g('pss'), efs: g('efs'), ics: g('ics'),
+      cfs: g('cfs'), thc: g('thc'), drs: g('drs'), bl: g('bl'), ts: g('ts')
+    });
+  });
+  return rows;
+}
+
 var wizStep = 1;
 // wizSteps[step-1] = { slotA:{...}, slotB:{...}, rows:[...], saved, skipped }
 var wizSteps = [{}, {}, {}];
@@ -1570,12 +1499,16 @@ var WIZ_TYPE_LABELS = {
 
 // ── 初期化 ───────────────────────────────────────────────────
 function wizInitPage() {
+  // シミュレーション画面のBKGを常に取得して全ステップに反映（未保存ステップのみ上書き）
   var simRows = getSimRowsForWizard();
-  if (simRows.length > 0 && !wizSteps[0].saved) {
-    wizSteps[0]._simRows = simRows;
-    wizSteps[1]._simRows = simRows;
-    wizSteps[2]._simRows = simRows;
-  }
+  [0, 1, 2].forEach(function(si) {
+    // 保存済みステップはユーザー編集を尊重（_simRows更新のみ）
+    wizSteps[si]._simRows = simRows;
+    // 未保存かつ未スキップの場合は行データもリセット
+    if (!wizSteps[si].saved && !wizSteps[si].skipped) {
+      wizSteps[si].rows = null;
+    }
+  });
   if (wizStep === 1 && !wizSteps[0].saved) wizReset();
   else wizRenderStep(wizStep);
 }
@@ -1584,6 +1517,9 @@ window.wizReset = function() {
   wizStep = 1;
   wizSteps = [{}, {}, {}];
   wizRowSeq = 0;
+  // シミュレーション画面のBKGを取得して全ステップの_simRowsに設定
+  var simRows = getSimRowsForWizard();
+  [0, 1, 2].forEach(function(si) { wizSteps[si]._simRows = simRows; });
   wizRenderStep(1);
 };
 
@@ -1654,7 +1590,8 @@ function wizRenderStep(step) {
 
   // ナビ
   $('wiz-btn-back').style.display = step > 1 ? '' : 'none';
-  $('wiz-btn-skip').style.display = step === 3 ? '' : 'none';
+  // ステップ1は必須（スキップ不可）、2・3はスキップ可
+  $('wiz-btn-skip').style.display = step >= 2 ? '' : 'none';
   $('wiz-btn-next').textContent = step === 3 ? '比較へ →' : '次へ →';
 
   // BKGリスト
@@ -1813,14 +1750,13 @@ function wizBuildRows(step) {
   tbody.innerHTML = ''; wizRowSeq = 0;
   var rows = [];
   var st = wizSteps[step-1];
-  if (st.rows && st.rows.length) {
+  if (st.saved && st.rows && st.rows.length) {
+    // 保存済みステップ：ユーザーが編集した内容を使用
     rows = st.rows.map(function(r){return Object.assign({},r);});
   } else {
-    // ステップ1のrows or シミュレーション転写
-    var base = (step > 1 && wizSteps[0].rows && wizSteps[0].rows.length)
-      ? wizSteps[0].rows
-      : (st._simRows || getSimRowsForWizard());
-    rows = base.map(function(r){return Object.assign({},r);});
+    // 未保存ステップ：常にシミュレーション画面の最新BKGを反映
+    var simRows = getSimRowsForWizard();
+    rows = simRows.length > 0 ? simRows : [];
   }
   rows.forEach(function(r){wizAddRow(r);});
   if (rows.length === 0) wizAddRow();
@@ -1953,10 +1889,15 @@ window.wizBack = function() {
 };
 window.wizSkip = function() {
   wizSteps[wizStep-1] = {skipped:true,saved:false,step:wizStep};
-  wizRenderStep('result');
+  if (wizStep < 3) wizRenderStep(wizStep + 1);
+  else wizRenderStep('result');
 };
 window.wizBackToEdit = function() {
-  var last = wizSteps[2].skipped ? 2 : 3;
+  // スキップされていない最後のステップに戻る
+  var last = 1;
+  for (var i = 2; i >= 0; i--) {
+    if (!wizSteps[i].skipped) { last = i + 1; break; }
+  }
   wizRenderStep(last);
 };
 
@@ -2236,10 +2177,13 @@ async function fetchFxRate() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var data = await res.json();
     var jpy = data && data.rates && data.rates.JPY;
+    var eur = data && data.rates && data.rates.EUR;
     if (!jpy) throw new Error('JPY rate not found');
     // TTSは仲値+1円が目安。小数点以下切り捨てで整数に
     var tts = Math.floor(jpy) + 1;
-    return tts;
+    // EUR/JPY = USD/JPY ÷ USD/EUR
+    var eurJpy = eur ? Math.floor(jpy / eur) + 1 : Math.floor(tts * 1.08);
+    return { usd: tts, eur: eurJpy };
   } catch(e) {
     console.warn('為替取得失敗、デフォルト値を使用:', e.message);
     return null;
@@ -2248,23 +2192,23 @@ async function fetchFxRate() {
 
 function applyFxRate(rate) {
   if (!rate) return;
-  var r = String(rate);
-  // EUR/JPYはUSD/JPY×0.92が近似（ECB基準）
-  var eurNum = Math.floor(rate * 0.92);
-  var eurRate = String(eurNum);
+  var usdRate = rate.usd || rate; // 後方互換
+  var eurRate = rate.eur || 187;
+  var r    = String(usdRate);
+  var rEur = String(eurRate);
   // グローバル保持（ウィザード描画時に参照）
-  window._autoFxJpy = rate;
-  window._autoFxEur = eurNum;
+  window._autoFxJpy = usdRate;
+  window._autoFxEur = eurRate;
   // シミュレーション画面
-  if ($('sim-fx'))  { $('sim-fx').value  = r;       }
-  if ($('sim-eur')) { $('sim-eur').value = eurRate;  }
+  if ($('sim-fx'))  { $('sim-fx').value  = r;    }
+  if ($('sim-eur')) { $('sim-eur').value = rEur;  }
   // ウィザード（現在表示中のフィールド）
   if ($('wiz-fx'))  $('wiz-fx').value  = r;
   // ヘッダーに表示
   var lbl = $('conn-lbl');
   if (lbl) {
     var orig = lbl.textContent;
-    var fxNote = '　💱 USD/JPY ' + r + '  EUR/JPY ' + eurRate + '（自動取得）';
+    var fxNote = '　💱 USD/JPY ' + r + '  EUR/JPY ' + rEur + '（自動取得）';
     if (orig.indexOf('💱') < 0) lbl.textContent = orig + fxNote;
   }
   // EUR反映後に再計算
@@ -2289,12 +2233,5 @@ function applyFxRate(rate) {
     addRow();
   }
 
-  // 結果カード表示時に保存カードも表示
-  var observer = new MutationObserver(function() {
-    var rc = $('result-card');
-    var sc = $('save-card');
-    if (rc && sc) sc.style.display = rc.style.display === 'none' ? 'none' : '';
-  });
-  var rc = $('result-card');
-  if (rc) observer.observe(rc, { attributes: true, attributeFilter: ['style'] });
+  // save-cardの表示はcalc()内で直接制御
 })();
