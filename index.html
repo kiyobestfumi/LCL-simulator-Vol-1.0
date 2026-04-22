@@ -143,7 +143,32 @@ table.mt tbody tr:hover td{background:var(--sur2)}
 .sec-lbl.t{color:var(--blue)}.sec-lbl.k{color:var(--red)}
 input[type=number]{-moz-appearance:textfield}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-/* パターン選択ボタン */
+/* ウィザード */
+.wiz-step{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;transition:all .2s;cursor:default}
+.wiz-step .wiz-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--brd2);color:var(--tx3);flex-shrink:0;transition:all .2s}
+.wiz-step .wiz-lbl{font-size:12px;font-weight:500;color:var(--tx3);transition:all .2s}
+.wiz-step.wiz-active .wiz-num{background:var(--tx);color:#fff}
+.wiz-step.wiz-active .wiz-lbl{color:var(--tx);font-weight:700}
+.wiz-step.wiz-done .wiz-num{background:var(--acc);color:#fff}
+.wiz-step.wiz-done .wiz-lbl{color:var(--acc)}
+.wiz-step.wiz-skip .wiz-num{background:var(--brd2);color:var(--tx3)}
+.wiz-step.wiz-skip .wiz-lbl{color:var(--tx3);text-decoration:line-through}
+.wiz-arrow{font-size:18px;color:var(--brd2);padding:0 4px;flex-shrink:0}
+/* 比較テーブル共通 */
+#wiz-cmp-table thead th{padding:8px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right}
+#wiz-cmp-table thead th:first-child{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2)}
+#wiz-cmp-table tbody tr td{padding:5px 12px;border-bottom:1px solid var(--brd);font-size:12px}
+#wiz-cmp-table tbody tr td:first-child{color:var(--tx2);font-size:11px}
+#wiz-cmp-table tbody tr.wiz-section td{background:var(--sur2);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);padding:4px 12px}
+#wiz-cmp-table tbody tr.wiz-total td{background:var(--sur2);font-weight:700;border-top:2px solid var(--brd2)}
+#wiz-cmp-table tbody tr.wiz-profit td{border-top:2px solid var(--tx)}
+#wiz-cmp-table .wv{font-family:var(--mono);text-align:right;white-space:nowrap}
+#wiz-cmp-table .wv.best{color:var(--acc);font-weight:700}
+#wiz-cmp-table .wv.worst{color:var(--red)}
+#wiz-cmp-table .wdiff{font-family:var(--mono);font-size:11px;text-align:right;white-space:nowrap;color:var(--tx3)}
+#wiz-cmp-table .wdiff.adv{color:var(--acc);font-weight:700}
+#wiz-cmp-table .wdiff.dis{color:var(--red)}
+/* パターンボタン */
 .pt-btn{display:inline-flex;align-items:center;font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 13px;border-radius:20px;border:2px solid var(--ptbd,var(--brd2));background:var(--sur);color:var(--tx2);cursor:pointer;transition:all .15s;white-space:nowrap;user-select:none}
 .pt-btn:hover{background:var(--ptbg,var(--sur2));color:var(--ptc,var(--tx));border-color:var(--ptbd,var(--brd2))}
 .pt-btn.pt-active{background:var(--ptc,var(--tx));color:#fff;border-color:var(--ptc,var(--tx))}
@@ -177,9 +202,123 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 
 <nav>
   <button class="nb active" onclick="showPage('sim')">シミュレーション</button>
+  <button class="nb" onclick="showPage('wizard')">パターン比較</button>
   <button class="nb" onclick="showPage('cust')">顧客マスター</button>
   <button class="nb" onclick="showPage('cost')">コストマスター</button>
 </nav>
+
+<!-- ===== WIZARD ===== -->
+<div id="page-wizard" class="page">
+  <!-- ステップインジケーター -->
+  <div style="display:flex;align-items:center;gap:0;margin-bottom:1.25rem;background:var(--sur);border:1px solid var(--brd);border-radius:var(--rl);padding:.6rem 1rem">
+    <div id="wiz-step-1" class="wiz-step wiz-active">
+      <span class="wiz-num">1</span><span class="wiz-lbl">パターン1</span>
+    </div>
+    <div class="wiz-arrow">›</div>
+    <div id="wiz-step-2" class="wiz-step">
+      <span class="wiz-num">2</span><span class="wiz-lbl">パターン2</span>
+    </div>
+    <div class="wiz-arrow">›</div>
+    <div id="wiz-step-3" class="wiz-step">
+      <span class="wiz-num">3</span><span class="wiz-lbl">パターン3</span>
+    </div>
+    <div class="wiz-arrow">›</div>
+    <div id="wiz-step-r" class="wiz-step">
+      <span class="wiz-num">✓</span><span class="wiz-lbl">比較結果</span>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-sm" onclick="wizReset()" style="font-size:11px;color:var(--red);border-color:var(--red-brd)">🔄 最初から</button>
+    </div>
+  </div>
+
+  <!-- ステップ1〜3（共通テンプレート、JSで切り替え） -->
+  <div id="wiz-input-area">
+    <!-- パターン設定カード -->
+    <div class="card" id="wiz-pattern-card">
+      <div class="ct">
+        <span id="wiz-pattern-title">パターン1 設定</span>
+        <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.5rem">スロット選択・船社を設定してください</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.85rem" id="wiz-type-btns">
+        <label id="wbtn-TK"     class="pt-btn pt-active" style="--ptc:var(--blue);--ptbg:var(--blue-bg);--ptbd:var(--blue-brd)"><input type="radio" name="wiztype" value="TK"     checked onchange="onWizTypeChange()" style="display:none">東京・神戸 独立</label>
+        <label id="wbtn-KB"     class="pt-btn" style="--ptc:var(--red);--ptbg:var(--red-bg);--ptbd:var(--red-brd)"><input type="radio" name="wiztype" value="KB"     onchange="onWizTypeChange()" style="display:none">神戸のみ</label>
+        <label id="wbtn-COLOAD" class="pt-btn" style="--ptc:var(--amber);--ptbg:var(--amber-bg);--ptbd:var(--amber-brd)"><input type="radio" name="wiztype" value="COLOAD" onchange="onWizTypeChange()" style="display:none">CO-LOAD</label>
+        <label id="wbtn-OLT"   class="pt-btn" style="--ptc:var(--acc);--ptbg:var(--acc-bg);--ptbd:var(--acc-brd)"><input type="radio" name="wiztype" value="OLT"    onchange="onWizTypeChange()" style="display:none">OLT混載</label>
+      </div>
+      <div id="wiz-carriers" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.75rem"></div>
+      <div id="wiz-coload-rate" style="display:none;background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.6rem .8rem;margin-bottom:.5rem">
+        <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:.3rem">CO-LOADコスト（固定）</div>
+        <div id="wiz-coload-rate-detail" style="font-size:11px;color:var(--amber);font-family:var(--mono)"></div>
+      </div>
+      <div class="g3">
+        <div class="f"><label>為替 USD/JPY</label><input type="text" id="wiz-fx" value="155" oninput="fmtI(this)"></div>
+        <div class="f"><label>パターン名（任意）</label><input type="text" id="wiz-name" placeholder="例: ONE 東京・神戸独立"></div>
+      </div>
+    </div>
+
+    <!-- 荷主リスト -->
+    <div class="card">
+      <div class="ct">
+        荷主リスト
+        <span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:.25rem">前のパターンからコピー済み。変更・追加可。</span>
+        <button class="btn btn-sm" onclick="wizAddRow()" style="margin-left:auto;font-size:11px">＋ 荷主を追加</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="rt" id="wiz-row-tbl">
+          <thead>
+            <tr>
+              <th>顧客名</th>
+              <th style="min-width:52px">物量 m³</th>
+              <th class="ts">仕向地</th>
+              <th style="background:#E8F0FF;color:var(--blue);font-size:9px;white-space:nowrap;min-width:60px">積み地</th>
+              <th class="sea">O/F</th><th class="sea">LSS</th><th class="sea">PSS</th><th class="sea">EFS</th><th class="sea" style="font-size:9px">ICS2<br>$/BL</th>
+              <th class="dom">CFS</th><th class="dom">THC</th><th class="dom">DRS</th>
+              <th class="dom">B/L</th>
+              <th class="ts">T/S売値</th><th class="ts">T/S適用</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="wiz-row-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- コンテナ構成 -->
+    <div class="card" id="wiz-cntr-card">
+      <div class="ct">コンテナ構成
+        <button class="btn btn-sm" onclick="wizAutoFill()" style="margin-left:auto;font-size:11px">自動計算値を反映</button>
+      </div>
+      <div id="wiz-cntr-inputs" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+      <div id="wiz-vol-summary" style="margin-top:.6rem;font-size:11px;color:var(--tx2);font-family:var(--mono)"></div>
+    </div>
+
+    <!-- ナビゲーションボタン -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.5rem">
+      <button class="btn" id="wiz-btn-back" onclick="wizBack()" style="display:none">← 戻る</button>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="btn" id="wiz-btn-skip" onclick="wizSkip()" style="display:none;color:var(--tx3)">スキップ</button>
+        <button class="btn btn-a" id="wiz-btn-next" onclick="wizNext()">次へ →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 比較結果エリア（最終ステップ） -->
+  <div id="wiz-result-area" style="display:none">
+    <div class="card" style="border-color:var(--tx);border-width:2px">
+      <div class="ct" style="color:var(--tx)">パターン比較結果</div>
+      <div style="overflow-x:auto">
+        <table id="wiz-cmp-table" style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead id="wiz-cmp-head"></thead>
+          <tbody id="wiz-cmp-body"></tbody>
+        </table>
+      </div>
+      <div id="wiz-concl" style="margin-top:.75rem"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:.5rem">
+      <button class="btn" onclick="wizBackToEdit()">← 修正に戻る</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== SIMULATION ===== -->
 <div id="page-sim" class="page active">
