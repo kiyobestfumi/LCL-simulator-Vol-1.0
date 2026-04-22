@@ -356,18 +356,6 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 
   <!-- hidden: calcで使う値をDOMに保持 -->
   <div style="display:none">
-    <input type="text" id="van-tokyo" value="2,800">
-    <input type="text" id="van-kobe" value="2,600">
-    <input type="text" id="lashing" value="6,000">
-    <input type="text" id="olt-handling" value="1,800">
-    <input type="text" id="olt-tr4" value="70,000">
-    <input type="text" id="olt-tr10" value="95,000">
-    <input type="text" id="olt-tr10z" value="110,000">
-    <input type="checkbox" id="olt-chk-4">
-    <input type="checkbox" id="olt-chk-10">
-    <input type="checkbox" id="olt-chk-10z">
-    <input type="checkbox" id="olt-apply-a">
-    <input type="checkbox" id="olt-apply-b" checked>
     <input type="number" id="ca-t20" value="0"><input type="number" id="ca-t40" value="0">
     <input type="number" id="ca-k20" value="0"><input type="number" id="ca-k40" value="0">
     <input type="number" id="cb-t20" value="0"><input type="number" id="cb-t40" value="0">
@@ -376,45 +364,26 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div id="slot1-card"></div><div id="slot2-card"></div>
     <div id="slot1-carriers"></div><div id="slot2-carriers"></div>
     <div id="slot1-coload-rate"></div><div id="slot2-coload-rate"></div>
-    <div id="slot1-type-btns"><input type="radio" name="slot1type" value="TK" checked onchange="onPatternChange()"></div>
-    <div id="slot2-type-btns"><input type="radio" name="slot2type" value="COLOAD" checked onchange="onPatternChange()"></div>
+    <div id="slot1-type-btns"><input type="radio" name="slot1type" value="OLT" checked onchange="onPatternChange()"></div>
+    <div id="slot2-type-btns"><input type="radio" name="slot2type" value="TK" checked onchange="onPatternChange()"></div>
     <div id="cntr-slot1-title"></div><div id="cntr-slot2-title"></div>
     <div id="vol-sum-a-title"></div><div id="vol-sum-b-title"></div>
     <div id="vol-sum-a"></div><div id="vol-sum-b"></div>
     <div id="vol-summary"></div><div id="cb-coload-wrap"></div>
     <div id="carrier-info-t"></div><div id="carrier-info-k"></div>
     <div id="carrier-info-bt"></div><div id="carrier-info-bk"></div>
-    <select id="sim-agent" onchange="onAgentChange()"><option value="">-- なし --</option></select>
-    <div id="agent-info"></div>
-    <div id="ca-note"></div><div id="cb-note"></div>
     <div id="wiz-preview-card"></div>
     <div id="th-slot1-hdr"></div><div id="th-slot2-hdr"></div>
-    <div id="sv-pa-label">スロット1 利益</div><div id="sv-pb-label">スロット2 利益</div>
+    <div id="sv-pa-label"></div><div id="sv-pb-label"></div>
     <div id="sv-ag-wrap"><div id="sv-ag"></div></div>
     <div id="sv-ref"></div>
-    <div id="olt-total-disp"></div><div id="olt-detail-disp"></div>
+    <div id="ca-note"></div><div id="cb-note"></div>
     <div id="olt-4-card"></div><div id="olt-10-card"></div><div id="olt-10z-card"></div>
   </div>
 
-  <!-- 為替設定（コンパクト） -->
-  <div class="card" style="padding:.65rem 1.1rem;margin-bottom:.75rem">
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--tx2)">為替</span>
-      <div style="display:flex;align-items:center;gap:6px">
-        <label style="font-size:11px;color:var(--tx2);white-space:nowrap">USD/JPY</label>
-        <input type="text" id="sim-fx" value="155" oninput="fmtI(this);calc()" style="width:70px;font-family:var(--mono);font-size:13px;padding:4px 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--sur2)">
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <label style="font-size:11px;color:var(--tx2);white-space:nowrap">EUR/JPY</label>
-        <input type="text" id="sim-eur" value="165" oninput="fmtI(this);calc()" style="width:70px;font-family:var(--mono);font-size:13px;padding:4px 8px;border:1px solid var(--brd);border-radius:var(--r);background:var(--sur2)">
-      </div>
-      <span style="font-size:10px;color:var(--tx3)">💱 自動取得（起動時）</span>
-    </div>
-  </div>
-
-  <!-- BKGリスト（最上段） -->
+  <!-- ① BKGリスト（最上段） -->
   <div class="card">
-    <div class="ct">BKGリスト<span style="font-size:10px;color:var(--tx3);font-weight:400;margin-left:.25rem">顧客選択で自動反映。手動修正可（オレンジ枠）。仕向地選択でT/S自動適用（紫背景）。</span></div>
+    <div class="ct">BKGリスト<span style="font-size:10px;color:var(--tx3);font-weight:400;margin-left:.25rem">顧客選択で自動反映。手動修正可（オレンジ枠）。拠点を設定してください。</span></div>
     <div class="cust-table-wrap">
       <table class="rt" id="row-tbl">
         <thead>
@@ -422,7 +391,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
             <th rowspan="2">顧客名</th>
             <th rowspan="2" style="min-width:52px">物量 m³</th>
             <th rowspan="2" class="ts">仕向地</th>
-            <th colspan="2" style="background:#F0F8E8;color:#2D6A1A;text-align:center;font-size:9px;border-bottom:1px solid var(--brd)">パターン別設定</th>
+            <th rowspan="2" style="background:#E8F0FF;color:var(--blue);min-width:60px;font-size:9px" id="th-slot1-hdr2">積み地</th>
             <th colspan="5" class="sea" style="text-align:center">海上諸掛 USD/m³</th>
             <th colspan="3" class="dom" style="text-align:center">国内/m³ JPY</th>
             <th colspan="4" class="dom" style="text-align:center;border-left:1px solid var(--acc-brd)">国内固定 JPY</th>
@@ -432,8 +401,6 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
             <th rowspan="2"></th>
           </tr>
           <tr>
-            <th id="th-slot1-hdr2" style="background:#E8F0FF;color:var(--blue);font-size:9px;white-space:nowrap">スロット1 拠点</th>
-            <th id="th-slot2-hdr2" style="background:#E8F5EE;color:var(--acc);font-size:9px;white-space:nowrap">スロット2 拠点</th>
             <th class="sea">O/F</th><th class="sea">LSS</th><th class="sea">PSS</th><th class="sea">EFS</th><th class="sea" style="white-space:nowrap">ICS2<br>$/BL</th>
             <th class="dom">CFS</th><th class="dom">THC</th><th class="dom">DRS</th>
             <th class="dom" style="border-left:1px solid var(--acc-brd)">B/L</th>
@@ -450,7 +417,148 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <button class="add-row-btn" onclick="addRow()">＋ BKGを追加</button>
   </div>
 
-  <!-- サマリーバー（残す項目のみ） -->
+  <!-- ② 船社コスト設定 -->
+  <div class="card">
+    <div class="ct">船社コスト設定</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:.75rem">
+      <!-- 東京船社 -->
+      <div style="background:var(--blue-bg);border:1px solid var(--blue-brd);border-radius:var(--r);padding:.65rem .9rem">
+        <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">東京 船社</div>
+        <select id="sim-carrier-t" onchange="onCarrierChange()" style="padding:5px 8px;width:100%;border:1px solid var(--blue-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
+          <option value="">-- 選択 --</option>
+        </select>
+        <div id="ci-sim-t" style="margin-top:.25rem;font-size:10px;color:var(--blue)"></div>
+      </div>
+      <!-- 神戸船社 -->
+      <div style="background:var(--red-bg);border:1px solid var(--red-brd);border-radius:var(--r);padding:.65rem .9rem">
+        <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">神戸 船社</div>
+        <select id="sim-carrier-k" onchange="onCarrierChange()" style="padding:5px 8px;width:100%;border:1px solid var(--red-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--mono)">
+          <option value="">-- 選択 --</option>
+        </select>
+        <div id="ci-sim-k" style="margin-top:.25rem;font-size:10px;color:var(--red)"></div>
+      </div>
+      <!-- CO-LOAD業者 -->
+      <div style="background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.65rem .9rem">
+        <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.06em">CO-LOAD 業者</div>
+        <select id="sim-coload-id" onchange="calc()" style="padding:5px 8px;width:100%;border:1px solid var(--amber-brd);border-radius:var(--r);background:var(--sur);font-size:13px;font-family:var(--sans)">
+          <option value="">-- 選択 --</option>
+        </select>
+        <div id="ci-sim-cl" style="margin-top:.25rem;font-size:10px;color:var(--amber)"></div>
+      </div>
+    </div>
+    <!-- AGENT・為替 -->
+    <div class="g3">
+      <div class="f"><label>AGENT（T/S手配）</label>
+        <select id="sim-agent" onchange="onAgentChange()" style="padding:6px 9px">
+          <option value="">-- なし --</option>
+        </select>
+      </div>
+      <div class="f"><label>為替 USD/JPY</label><input type="text" id="sim-fx" value="155" oninput="fmtI(this);calc()"></div>
+      <div class="f"><label>EUR/JPY（HMM EES用）</label><input type="text" id="sim-eur" value="165" oninput="fmtI(this);calc()"></div>
+    </div>
+    <div id="agent-info" style="margin-top:.3rem"></div>
+  </div>
+
+  <!-- ③ VANNING・ラッシング設定 -->
+  <div class="card" id="sim-vanning-card">
+    <div class="ct">VANNING・ラッシング設定<span style="font-size:10px;color:var(--tx3);font-weight:400;margin-left:.3rem">船社選択で自動反映。手動修正可。</span></div>
+    <div class="g2">
+      <div class="sec-box t-box">
+        <div class="sec-lbl t">東京</div>
+        <div class="g2">
+          <div class="f"><label>VANNING (JPY/m³)</label><input type="text" id="van-tokyo" value="2,800" oninput="fmtI(this);calc()"></div>
+          <div class="f"><label>VANNINGミニマム</label>
+            <input type="text" value="13/26" readonly style="background:var(--blue-bg);border-color:var(--blue-brd);color:var(--blue)">
+            <div class="unit">20FT=13m³ / 40HC=26m³</div>
+          </div>
+        </div>
+      </div>
+      <div class="sec-box k-box">
+        <div class="sec-lbl k">神戸</div>
+        <div class="g3">
+          <div class="f"><label>VANNING (JPY/m³)</label><input type="text" id="van-kobe" value="2,600" oninput="fmtI(this);calc()"></div>
+          <div class="f"><label>ラッシング (JPY/CNTR)</label><input type="text" id="lashing" value="6,000" oninput="fmtI(this);calc()"></div>
+          <div class="f"><label>VANNINGミニマム</label>
+            <input type="text" value="10" readonly style="background:var(--red-bg);border-color:var(--red-brd);color:var(--red)">
+            <div class="unit">20FT・40HC 共通 10m³</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ OLTトラック費用・入出庫料 -->
+  <div class="card" id="sim-olt-card">
+    <div class="ct">OLT トラック費用（神戸→東京）<span style="font-size:10px;color:var(--tx3);font-weight:400;margin-left:.3rem">チェックして手配するトラックを選択</span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.5rem;align-items:stretch">
+      <label id="olt-4-card" style="display:flex;flex-direction:column;gap:4px;border:1px solid var(--brd);border-radius:var(--r);padding:.6rem .9rem;cursor:pointer;min-width:155px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="olt-chk-4" onchange="onOltChk()" style="width:15px;height:15px;accent-color:var(--blue)">
+          <span style="font-size:12px;font-weight:600;color:var(--blue)">4トン車</span>
+          <span style="font-size:10px;color:var(--tx3)">～15m³</span>
+        </div>
+        <input type="text" id="olt-tr4" value="70,000" oninput="fmtI(this);calc()" style="font-family:var(--mono);font-size:12px;padding:4px 7px;border:1px solid var(--brd);border-radius:5px;background:var(--sur2);color:var(--tx);width:100%">
+      </label>
+      <label id="olt-10-card" style="display:flex;flex-direction:column;gap:4px;border:1px solid var(--brd);border-radius:var(--r);padding:.6rem .9rem;cursor:pointer;min-width:155px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="olt-chk-10" onchange="onOltChk()" style="width:15px;height:15px;accent-color:var(--blue)">
+          <span style="font-size:12px;font-weight:600;color:var(--blue)">10トン車</span>
+          <span style="font-size:10px;color:var(--tx3)">～25m³</span>
+        </div>
+        <input type="text" id="olt-tr10" value="95,000" oninput="fmtI(this);calc()" style="font-family:var(--mono);font-size:12px;padding:4px 7px;border:1px solid var(--brd);border-radius:5px;background:var(--sur2);color:var(--tx);width:100%">
+      </label>
+      <label id="olt-10z-card" style="display:flex;flex-direction:column;gap:4px;border:1px solid var(--brd);border-radius:var(--r);padding:.6rem .9rem;cursor:pointer;min-width:155px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="checkbox" id="olt-chk-10z" onchange="onOltChk()" style="width:15px;height:15px;accent-color:var(--blue)">
+          <span style="font-size:12px;font-weight:600;color:var(--blue)">10t 増トン</span>
+          <span style="font-size:10px;color:var(--tx3)">～35m³</span>
+        </div>
+        <input type="text" id="olt-tr10z" value="110,000" oninput="fmtI(this);calc()" style="font-family:var(--mono);font-size:12px;padding:4px 7px;border:1px solid var(--brd);border-radius:5px;background:var(--sur2);color:var(--tx);width:100%">
+      </label>
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:4px;background:var(--blue-bg);border:1px solid var(--blue-brd);border-radius:var(--r);padding:.6rem .9rem;min-width:160px;flex:1">
+        <div style="font-size:10px;color:var(--blue);font-weight:700;text-transform:uppercase;letter-spacing:.06em">OLT合計</div>
+        <div id="olt-total-disp" style="font-family:var(--mono);font-size:18px;font-weight:600;color:var(--blue)">-</div>
+        <div id="olt-detail-disp" style="font-size:10px;color:var(--blue);line-height:1.5"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:4px;background:var(--amber-bg);border:1px solid var(--amber-brd);border-radius:var(--r);padding:.6rem .9rem;min-width:160px">
+        <div style="font-size:10px;color:var(--amber);font-weight:700;text-transform:uppercase;letter-spacing:.06em">入出庫料 JPY/RT</div>
+        <input type="text" id="olt-handling" value="1,800" oninput="fmtI(this);calc()" style="font-family:var(--mono);font-size:14px;padding:4px 7px;border:1px solid var(--amber-brd);border-radius:5px;background:var(--sur);color:var(--amber);font-weight:600;width:100%">
+        <div style="font-size:10px;color:var(--amber)">神戸貨物に適用</div>
+      </div>
+    </div>
+    <!-- コンテナ本数設定 -->
+    <div style="border-top:1px solid var(--brd);padding-top:.6rem;margin-top:.3rem">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);margin-bottom:.5rem">コンテナ本数設定
+        <button class="btn btn-sm" onclick="simAutoFill()" style="margin-left:8px;font-size:10px">自動計算値を反映</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:var(--blue-bg);border-radius:var(--r);padding:.5rem .8rem">
+          <div style="font-size:10px;font-weight:700;color:var(--blue);margin-bottom:.35rem">東京 船社</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">20FT</label><input type="number" id="sim-t20" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
+            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">40HC</label><input type="number" id="sim-t40" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
+          </div>
+        </div>
+        <div style="background:var(--red-bg);border-radius:var(--r);padding:.5rem .8rem">
+          <div style="font-size:10px;font-weight:700;color:var(--red);margin-bottom:.35rem">神戸 船社</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">20FT</label><input type="number" id="sim-k20" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
+            <div style="display:flex;align-items:center;gap:5px"><label style="font-size:11px;color:var(--tx2)">40HC</label><input type="number" id="sim-k40" min="0" value="0" onchange="calc()" style="width:50px;font-family:var(--mono);font-size:13px;padding:3px 5px;border:1px solid var(--brd2);border-radius:5px;text-align:center"><span style="font-size:11px;color:var(--tx2)">本</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ 物量サマリー -->
+  <div id="sim-vol-summary" style="display:none;margin-bottom:1rem">
+    <div style="background:var(--sur);border:1px solid var(--brd);border-radius:var(--rl);padding:.75rem 1.1rem">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--tx2);margin-bottom:.6rem">積み地別 物量サマリー</div>
+      <div id="sim-vol-detail" style="font-size:12px;font-family:var(--mono);color:var(--tx2)"></div>
+    </div>
+  </div>
+
+  <!-- ⑥ sum-bar -->
   <div class="sum-bar" id="sum-bar" style="display:none">
     <div class="sc"><div class="sl">東京 物量</div><div class="sv" id="sv-t">-</div></div>
     <div class="sc"><div class="sl">神戸 物量</div><div class="sv" id="sv-k">-</div></div>
@@ -460,22 +568,18 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div class="sc"><div class="sl">総売上</div><div class="sv" id="sv-rev">-</div></div>
   </div>
 
+  <!-- ⑦ 3パターン比較結果 -->
   <div class="card" id="result-card" style="display:none">
-    <div class="ct">パターン比較結果</div>
+    <div class="ct">3パターン 粗利比較</div>
     <div style="overflow-x:auto">
       <table id="cmp-table" style="width:100%;border-collapse:collapse;font-size:12px">
         <thead>
           <tr>
-            <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);width:38%">項目</th>
-            <th id="th-a" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;width:27%">スロット1 <span id="badge-a"></span></th>
-            <th id="th-b" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;width:27%">スロット2 <span id="badge-b"></span></th>
-            <th style="padding:7px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--tx3);border-bottom:2px solid var(--brd);text-align:right;width:8%">差額A-B</th>
-          </tr>
-          <tr>
-            <td style="padding:2px 10px 6px;font-size:10px;color:var(--tx3)" id="rsub-label"></td>
-            <td style="padding:2px 12px 6px;font-size:10px;color:var(--blue);text-align:right" id="rsub-a"></td>
-            <td style="padding:2px 12px 6px;font-size:10px;color:var(--acc);text-align:right" id="rsub-b"></td>
-            <td></td>
+            <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tx2);border-bottom:2px solid var(--brd);width:30%">項目</th>
+            <th id="th-p1" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;background:var(--acc-bg);color:var(--acc)">①OLT合算<br><span style="font-size:10px;font-weight:400">神戸OLT→東京合流</span></th>
+            <th id="th-p2" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;background:var(--amber-bg);color:var(--amber)">②CO-LOAD＋東京独立<br><span style="font-size:10px;font-weight:400">神戸CO-LOAD＋東京自社</span></th>
+            <th id="th-p3" style="padding:7px 12px;font-size:12px;font-weight:700;border-bottom:2px solid var(--brd);text-align:right;background:var(--blue-bg);color:var(--blue)">③東京・神戸独立<br><span style="font-size:10px;font-weight:400">各拠点自社仕立て</span></th>
+            <th style="padding:7px 8px;font-size:10px;font-weight:700;color:var(--tx3);border-bottom:2px solid var(--brd);text-align:right;width:8%">最大差額</th>
           </tr>
         </thead>
         <tbody id="cmp-body"></tbody>
@@ -485,19 +589,15 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div style="margin-top:.75rem">
       <button onclick="toggleCbDetail()" style="font-family:var(--sans);font-size:12px;color:var(--tx2);border:1px solid var(--brd2);background:var(--sur2);border-radius:var(--r);padding:4px 14px;cursor:pointer" id="cb-toggle-btn">▶ BKG内訳を表示</button>
       <div id="cb-detail" style="display:none;margin-top:.6rem">
-        <div class="rg">
-          <div class="rc" id="rc-a">
-            <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem" id="cb-a-title">スロット1 BKG内訳</div>
-            <div class="cb-wrap" id="cb-a"></div>
-          </div>
-          <div class="rc" id="rc-b">
-            <div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem" id="cb-b-title">スロット2 BKG内訳</div>
-            <div class="cb-wrap" id="cb-b"></div>
-          </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">①OLT合算 BKG内訳</div><div id="cb-p1"></div></div>
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:.4rem">②CO-LOAD＋東京独立 BKG内訳</div><div id="cb-p2"></div></div>
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem">③東京・神戸独立 BKG内訳</div><div id="cb-p3"></div></div>
         </div>
-        <div class="rg" style="margin-top:.75rem">
-          <div class="rc"><div id="det-a-title" style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem">スロット1 コスト明細</div><div id="det-a"></div></div>
-          <div class="rc"><div id="det-b-title" style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">スロット2 コスト明細</div><div id="det-b"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:.75rem">
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--acc);margin-bottom:.4rem">①コスト明細</div><div id="det-p1"></div></div>
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:.4rem">②コスト明細</div><div id="det-p2"></div></div>
+          <div class="rc"><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:.4rem">③コスト明細</div><div id="det-p3"></div></div>
         </div>
       </div>
     </div>
@@ -509,7 +609,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
       <div class="f" style="flex:1;min-width:200px">
         <label>タイトル（保存名）</label>
-        <input type="text" id="sim-title" placeholder="例: 2025年4月 ONE vs HMM 比較" style="font-family:var(--sans)">
+        <input type="text" id="sim-title" placeholder="例: 2025年4月 OLT vs CO-LOAD 比較" style="font-family:var(--sans)">
       </div>
       <button class="btn btn-a" onclick="saveSimulation()" style="white-space:nowrap;padding:7px 20px">
         💾 保存して共有URLを生成
