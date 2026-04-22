@@ -292,6 +292,17 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div id="wiz-vol-summary" style="margin-top:.6rem;font-size:11px;color:var(--tx2);font-family:var(--mono)"></div>
     </div>
 
+    <!-- このパターンの計算結果プレビュー -->
+    <div class="card" id="wiz-preview-card" style="border-color:var(--blue-brd);display:none">
+      <div class="ct" style="color:var(--blue)">
+        <span id="wiz-preview-title">このパターンの計算結果</span>
+        <button class="btn btn-sm" onclick="wizCalcPreview()" style="margin-left:auto;font-size:11px;background:var(--blue-bg);border-color:var(--blue-brd);color:var(--blue)">🔄 再計算</button>
+      </div>
+      <div id="wiz-preview-body">
+        <div style="color:var(--tx3);font-size:12px;text-align:center;padding:1rem">コンテナ構成を入力後、「再計算」ボタンを押すか自動計算値を反映してください</div>
+      </div>
+    </div>
+
     <!-- ナビゲーションボタン -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.5rem">
       <button class="btn" id="wiz-btn-back" onclick="wizBack()" style="display:none">← 戻る</button>

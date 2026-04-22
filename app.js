@@ -2043,6 +2043,18 @@ function wizRenderStep(step) {
   // コンテナ構成描画
   wizRenderCntrInputs(type, saved);
   wizUpdateVolSummary();
+
+  // 保存済みパターンがあればプレビューを自動表示、なければ非表示
+  var previewCard = $('wiz-preview-card');
+  if (previewCard) {
+    if (saved.saved) {
+      wizCalcPreview();
+    } else {
+      previewCard.style.display = 'none';
+      var previewBody = $('wiz-preview-body');
+      if (previewBody) previewBody.innerHTML = '<div style="color:var(--tx3);font-size:12px;text-align:center;padding:1rem">コンテナ構成を入力後、「再計算」ボタンを押すか自動計算値を反映してください</div>';
+    }
+  }
 }
 
 // ── パターンタイプ変更 ────────────────────────────────────────
@@ -2312,6 +2324,7 @@ window.wizAutoFill = function() {
     if ($('wiz-ck40')) $('wiz-ck40').value = kM > 0 ? Math.ceil(kM/ck40) : 0;
   }
   wizUpdateVolSummary();
+  wizCalcPreview();
 };
 
 // ── 行データ収集 ──────────────────────────────────────────────
@@ -2339,6 +2352,111 @@ function wizGetCurrentRows() {
   });
   return rows;
 }
+
+// ── パターンプレビュー計算・表示 ──────────────────────────────
+window.wizCalcPreview = function() {
+  var previewCard = $('wiz-preview-card');
+  var previewBody = $('wiz-preview-body');
+  var previewTitle = $('wiz-preview-title');
+  if (!previewCard || !previewBody) return;
+
+  // 現在の入力状態を一時保存して計算
+  wizSaveCurrentStep();
+  var pat = wizPatterns[wizStep - 1];
+  var result = wizCalcPattern(pat);
+
+  previewCard.style.display = '';
+  if (previewTitle) previewTitle.textContent = pat.name + ' の計算結果';
+
+  if (!result) {
+    previewBody.innerHTML = '<div style="color:var(--tx3);font-size:12px;padding:.75rem">コンテナ構成または船社が未設定のため計算できません。</div>';
+    return;
+  }
+
+  var fx = nv(pat.fx || 155);
+  var type = pat.type;
+  var rows = pat.rows || [];
+
+  // コスト明細HTML生成
+  var detailHtml = '';
+
+  // コンテナ明細
+  if (result.cntrBreakdown && result.cntrBreakdown.length) {
+    detailHtml += '<div style="margin-bottom:.6rem">';
+    detailHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);margin-bottom:.3rem">コンテナ・仕入コスト</div>';
+    result.cntrBreakdown.forEach(function(line) {
+      detailHtml += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--brd)">' +
+        '<span style="color:var(--tx2)">' + line.split(':')[0] + '</span>' +
+        '<span style="font-family:var(--mono)">' + (line.split(':')[1]||'').trim() + '</span></div>';
+    });
+    detailHtml += '</div>';
+  }
+
+  // OLT（TK/OLTで神戸貨物あり）
+  if ((type === 'TK' || type === 'OLT') && result.kM > 0) {
+    var kM = result.kM;
+    var oltObj = calcOLT(kM);
+    if (oltObj.total > 0) {
+      detailHtml += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--brd)">' +
+        '<span style="color:var(--blue)">OLT費用（トラック＋入出庫）</span>' +
+        '<span style="font-family:var(--mono);color:var(--blue)">' + fmtY(oltObj.total) + '</span></div>';
+    }
+  }
+
+  // T/Sコスト
+  if (result.totalTs !== 0) {
+    detailHtml += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px solid var(--brd)">' +
+      '<span style="color:var(--purple)">T/Sコスト</span>' +
+      '<span style="font-family:var(--mono);color:var(--purple)">' + fmtY(result.totalTs) + '</span></div>';
+  }
+
+  // 区切り線
+  detailHtml += '<div style="border-top:2px solid var(--brd2);margin:.5rem 0"></div>';
+
+  // サマリーグリッド
+  detailHtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:.6rem">';
+  function miniCard(label, val, color) {
+    return '<div style="background:var(--sur2);border-radius:var(--r);padding:.4rem .7rem">' +
+      '<div style="font-size:10px;color:var(--tx2);margin-bottom:2px">' + label + '</div>' +
+      '<div style="font-family:var(--mono);font-size:13px;font-weight:600;color:' + color + '">' + fmtY(val) + '</div>' +
+    '</div>';
+  }
+  detailHtml += miniCard('総売上', result.totalRev, 'var(--tx)');
+  detailHtml += miniCard('総コスト', result.cost, 'var(--tx)');
+  detailHtml += miniCard('利益', result.prof, result.prof >= 0 ? 'var(--acc)' : 'var(--red)');
+  detailHtml += '</div>';
+
+  // 利益強調バナー
+  var profColor = result.prof >= 0 ? 'var(--acc)' : 'var(--red)';
+  var profBg    = result.prof >= 0 ? 'var(--acc-bg)' : 'var(--red-bg)';
+  var profBrd   = result.prof >= 0 ? 'var(--acc-brd)' : 'var(--red-brd)';
+  detailHtml += '<div style="background:' + profBg + ';border:1px solid ' + profBrd + ';border-radius:var(--r);padding:.6rem .9rem;display:flex;align-items:center;justify-content:space-between">' +
+    '<div>' +
+      '<div style="font-size:10px;color:' + profColor + ';margin-bottom:2px">利益（売上 - コスト）</div>' +
+      '<div style="font-size:10px;color:var(--tx3)">物量: 東京 ' + fmt(result.tM,1) + 'm³ / 神戸 ' + fmt(result.kM,1) + 'm³ / 合計 ' + fmt(result.allM,1) + 'm³</div>' +
+    '</div>' +
+    '<div style="font-family:var(--mono);font-size:20px;font-weight:900;color:' + profColor + '">' + fmtY(result.prof) + '</div>' +
+  '</div>';
+
+  // BKGリスト内訳
+  detailHtml += '<div style="margin-top:.6rem">';
+  detailHtml += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--tx2);margin-bottom:.3rem">BKGリスト内訳</div>';
+  rows.forEach(function(r) {
+    var rowRev = (r.of + r.lss + r.pss + r.efs) * r.vol * fx + r.ics * fx +
+                 (r.tsApply ? r.ts * r.vol * fx : 0) +
+                 (r.cfs + r.thc + r.drs) * r.vol + r.bl;
+    var bi = baseInfo(r.base === '東京' ? 'TOKYO' : 'KOBE');
+    detailHtml += '<div style="display:flex;align-items:center;gap:6px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--brd)">' +
+      '<span style="flex:1;font-weight:500">' + r.custName + '</span>' +
+      '<span class="cb-tag ' + bi.tagCls + '">' + bi.label + '</span>' +
+      '<span style="color:var(--tx3);min-width:50px;text-align:right">' + fmt(r.vol,1) + 'm³</span>' +
+      '<span style="font-family:var(--mono);min-width:90px;text-align:right;color:var(--acc)">' + fmtY(rowRev) + '</span>' +
+    '</div>';
+  });
+  detailHtml += '</div>';
+
+  previewBody.innerHTML = detailHtml;
+};
 
 // ── ステップ保存 ──────────────────────────────────────────────
 function wizSaveCurrentStep() {
