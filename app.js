@@ -1573,15 +1573,33 @@ function wizRenderStep(step) {
   if ($('wiz-pattern-title')) $('wiz-pattern-title').textContent = 'ステップ' + step + ' 設定';
 
   // 為替・共通コスト設定の復元
+  // 未保存の場合はシミュレーション画面の現在値をデフォルトとして使用
   var autoFx  = window._autoFxJpy ? String(window._autoFxJpy) : '155';
   var autoEur = window._autoFxEur ? String(window._autoFxEur) : '187';
-  if ($('wiz-fx'))          $('wiz-fx').value          = st.fx          || autoFx;
-  if ($('wiz-eur'))         $('wiz-eur').value         = st.eur         || autoEur;
-  if ($('wiz-van-tokyo'))   $('wiz-van-tokyo').value   = st.vanTokyo    || '2,800';
-  if ($('wiz-van-kobe'))    $('wiz-van-kobe').value    = st.vanKobe     || '2,600';
-  if ($('wiz-lashing'))     $('wiz-lashing').value     = st.lashing     || '6,000';
-  if ($('wiz-olt-handling'))$('wiz-olt-handling').value= st.oltHandling || '1,800';
-  if ($('wiz-olt-truck'))   $('wiz-olt-truck').value   = st.oltTruck    || '0';
+
+  // シミュレーション画面から各種設定を読み取り（ウィザードのデフォルト初期値に使う）
+  var simVanTokyo   = $('van-tokyo')    ? $('van-tokyo').value    : '2,800';
+  var simVanKobe    = $('van-kobe')     ? $('van-kobe').value     : '2,600';
+  var simLashing    = $('lashing')      ? $('lashing').value      : '6,000';
+  var simOltHandling= $('olt-handling') ? $('olt-handling').value : '1,800';
+
+  // OLTトラック費：シミュレーション画面でチェックされているトラックの合計を引き継ぐ
+  function calcSimOltTruck() {
+    var truck = 0;
+    if ($('olt-chk-4')   && $('olt-chk-4').checked)   truck += nv($('olt-tr4')   ? $('olt-tr4').value   : 0);
+    if ($('olt-chk-10')  && $('olt-chk-10').checked)  truck += nv($('olt-tr10')  ? $('olt-tr10').value  : 0);
+    if ($('olt-chk-10z') && $('olt-chk-10z').checked) truck += nv($('olt-tr10z') ? $('olt-tr10z').value : 0);
+    return truck;
+  }
+  var simOltTruck = calcSimOltTruck();
+
+  if ($('wiz-fx'))           $('wiz-fx').value           = st.fx          || autoFx;
+  if ($('wiz-eur'))          $('wiz-eur').value          = st.eur         || autoEur;
+  if ($('wiz-van-tokyo'))    $('wiz-van-tokyo').value    = st.vanTokyo    || simVanTokyo;
+  if ($('wiz-van-kobe'))     $('wiz-van-kobe').value     = st.vanKobe     || simVanKobe;
+  if ($('wiz-lashing'))      $('wiz-lashing').value      = st.lashing     || simLashing;
+  if ($('wiz-olt-handling')) $('wiz-olt-handling').value = st.oltHandling || simOltHandling;
+  if ($('wiz-olt-truck'))    $('wiz-olt-truck').value    = st.oltTruck != null ? st.oltTruck : fmt(simOltTruck);
 
   // スロットA/B タイプ設定
   ['A','B'].forEach(function(sl) {
@@ -1676,13 +1694,20 @@ function wizRenderSlotCarriers(sl, type, saved) {
   }
 
   if (type === 'TK') {
-    html = selHtml('t', '東京 船社', 'var(--blue)', 'var(--blue-brd)', saved.cT||'') +
-           selHtml('k', '神戸 船社', 'var(--red)',  'var(--red-brd)',  saved.cK||'');
+    // 未保存の場合はシミュレーション画面の東京・神戸船社を引き継ぐ
+    var defaultCT = saved.cT || ($('sim-carrier-t') ? $('sim-carrier-t').value : '');
+    var defaultCK = saved.cK || ($('sim-carrier-k') ? $('sim-carrier-k').value : '');
+    html = selHtml('t', '東京 船社', 'var(--blue)', 'var(--blue-brd)', defaultCT) +
+           selHtml('k', '神戸 船社', 'var(--red)',  'var(--red-brd)',  defaultCK);
   } else if (type === 'COLOAD') {
-    html = clSelHtml(saved.clId||'') +
-           selHtml('t', '東京 船社', 'var(--blue)', 'var(--blue-brd)', saved.cT||'');
+    // CO-LOAD業者：シミュレーション画面の選択を引き継ぐ
+    var defaultCL = saved.clId || ($('sim-coload-id') ? $('sim-coload-id').value : '');
+    var defaultCT = saved.cT   || ($('sim-carrier-t') ? $('sim-carrier-t').value : '');
+    html = clSelHtml(defaultCL) +
+           selHtml('t', '東京 船社', 'var(--blue)', 'var(--blue-brd)', defaultCT);
   } else if (type === 'OLT') {
-    html = selHtml('t', '東京 船社（OLT後合流）', 'var(--acc)', 'var(--acc-brd)', saved.cT||'');
+    var defaultCT = saved.cT || ($('sim-carrier-t') ? $('sim-carrier-t').value : '');
+    html = selHtml('t', '東京 船社（OLT後合流）', 'var(--acc)', 'var(--acc-brd)', defaultCT);
   }
   el.innerHTML = html;
 
@@ -1978,6 +2003,7 @@ function wizSaveCurrentStep() {
     lashing:     $('wiz-lashing')     ? $('wiz-lashing').value     : '6000',
     oltHandling: $('wiz-olt-handling')? $('wiz-olt-handling').value: '1800',
     oltTruck:    $('wiz-olt-truck')   ? $('wiz-olt-truck').value   : '0',
+    agentName:   selAgent ? selAgent.name : '',
     slotA: slotData('A'),
     slotB: slotData('B'),
     rows: wizGetCurrentRows()
@@ -2057,6 +2083,22 @@ function wizCalcSlot(slotData, rows, fx, st) {
     return s + (t > 0 ? Math.max(raw, nv(r.tsRate.ts_min)) : raw) * fx;
   }, 0);
 
+  // ── AGENTコスト（シミュレーション画面の選択 or ステップ保存値を引き継ぐ） ──
+  var agentName = st.agentName || (selAgent ? selAgent.name : '');
+  var agentRatesForWiz = agentName
+    ? agentRates.filter(function(r){ return r.agent_name === agentName; })
+    : [];
+  var totalAgent = 0;
+  if (agentRatesForWiz.length > 0) {
+    rows.forEach(function(r){
+      var rate = null;
+      agentRatesForWiz.forEach(function(a){ if(a.destination===r.dest) rate=a; });
+      if(!rate) agentRatesForWiz.forEach(function(a){ if(a.destination==='ALL') rate=a; });
+      if(!rate) return;
+      totalAgent += (nv(rate.ts_cost_usd)*r.vol + nv(rate.fixed_usd))*fx + nv(rate.handling_jpy);
+    });
+  }
+
   // ── コンテナコスト計算ヘルパー ──
   function selByCarrier(carrier, isHC) {
     var found = null;
@@ -2100,7 +2142,7 @@ function wizCalcSlot(slotData, rows, fx, st) {
   var cK40n = cntr['wiz-ck40-'+sl] || 0;
 
   var cntrCostTotal = 0, oltCostTotal = 0, clCostTotal = 0, refund = 0;
-  var cntrCostTokyo = 0, cntrCostKobe = 0; // 個別コスト追跡用
+  var cntrCostTokyo = 0, cntrCostKobe = 0; // 個別コスト追跡
   var bdItems = [];
   var cT = slotData.cT || '未選択';
   var cK = slotData.cK || '未選択';
@@ -2226,18 +2268,20 @@ function wizCalcSlot(slotData, rows, fx, st) {
   }
   // ══════════════════════════════════════════════════════════
 
-  if (totalTs > 0) bdItems.push(bdRow('🌐 T/Sコスト（買値）', totalTs, 'var(--purple)'));
-  if (refund  > 0) bdItems.push(bdRow('💰 REFUND（控除）', -refund, 'var(--green)'));
+  if (totalTs     > 0) bdItems.push(bdRow('🌐 T/Sコスト（買値）', totalTs, 'var(--purple)'));
+  if (totalAgent  > 0) bdItems.push(bdRow('👤 AGENTコスト（'+agentName+'）', totalAgent, 'var(--purple)'));
+  if (refund      > 0) bdItems.push(bdRow('💰 REFUND（控除）', -refund, 'var(--green)'));
 
-  var cost = cntrCostTotal + totalTs - refund;
+  var cost = cntrCostTotal + totalTs + totalAgent - refund;
   var prof = totalRev - cost;
 
   return {
     name: slotData.name, type: type,
     totalRev: totalRev, cost: cost, prof: prof,
-    cntrCost: cntrCostTotal, cntrCostTokyo: cntrCostTokyo, cntrCostKobe: cntrCostKobe,
-    oltCost: oltCostTotal, clCost: clCostTotal, totalTs: totalTs,
-    refund: refund,
+    cntrCost: cntrCostTotal,
+    cntrCostTokyo: cntrCostTokyo, cntrCostKobe: cntrCostKobe,
+    oltCost: oltCostTotal, clCost: clCostTotal,
+    totalTs: totalTs, totalAgent: totalAgent, refund: refund,
     bdItems: bdItems,
     tM: tM, kM: kM, allM: tM+kM, rows: rows
   };
@@ -2399,20 +2443,21 @@ function wizRenderResult() {
   bodyHtml += simRow('神戸 m³', function(r){return r.kM;});
   bodyHtml += simRow('合計 m³', function(r){return r.allM;});
   bodyHtml += secRow('コスト内訳');
-  // 東京コンテナコスト（全タイプ共通で存在する可能性あり）
-  var hasTkyo = validSlots.some(function(r){return r.cntrCostTokyo>0;});
-  if(hasTkyo) bodyHtml += simRow('🚢 東京コンテナコスト', function(r){return r.cntrCostTokyo||0;});
-  // 神戸コンテナコスト（TKタイプのみ）
-  var hasKobe = validSlots.some(function(r){return r.type==='TK' && r.cntrCostKobe>0;});
+  // 東京コンテナコスト（全タイプ）
+  bodyHtml += simRow('🚢 東京コンテナコスト', function(r){return r.cntrCostTokyo||0;});
+  // 神戸コンテナコスト（TKタイプのみ出現）
+  var hasKobe = validSlots.some(function(r){return r.type==='TK'&&(r.cntrCostKobe||0)>0;});
   if(hasKobe) bodyHtml += simRow('🚢 神戸コンテナコスト', function(r){return (r.type==='TK'?r.cntrCostKobe:0)||0;});
-  // CO-LOADコスト（COLOADタイプのみ）
-  var hasCl = validSlots.some(function(r){return r.clCost>0;});
-  if(hasCl) bodyHtml += simRow('📦 CO-LOADコスト（神戸）', function(r){return r.clCost||0;});
-  // OLTコスト（OLTタイプのみ）
-  var hasOlt = validSlots.some(function(r){return r.oltCost>0;});
+  // CO-LOADコスト（COLOADタイプ）
+  var hasCl = validSlots.some(function(r){return (r.clCost||0)>0;});
+  if(hasCl) bodyHtml += simRow('📦 CO-LOADコスト（神戸行）', function(r){return r.clCost||0;});
+  // OLTコスト（OLTタイプ）
+  var hasOlt = validSlots.some(function(r){return (r.oltCost||0)>0;});
   if(hasOlt) bodyHtml += simRow('🚛 OLTコスト（神戸→東京）', function(r){return r.oltCost||0;});
   var hasTs = validSlots.some(function(r){return r.totalTs!==0;});
-  if(hasTs) bodyHtml += simRow('T/Sコスト（買値）', function(r){return r.totalTs||0;});
+  if(hasTs) bodyHtml += simRow('🌐 T/Sコスト（買値）', function(r){return r.totalTs||0;});
+  var hasAgent = validSlots.some(function(r){return (r.totalAgent||0)!==0;});
+  if(hasAgent) bodyHtml += simRow('👤 AGENTコスト', function(r){return r.totalAgent||0;});
   var hasRef = validSlots.some(function(r){return r.refund>0;});
   if(hasRef) bodyHtml += simRow('REFUND（▲控除）', function(r){return -(r.refund||0);});
   bodyHtml += '<tr style="border-top:2px solid var(--brd2)"><td style="padding:6px 10px;font-weight:700;font-size:12px">総コスト</td>' +
