@@ -103,20 +103,19 @@ window.fmtI = function(el) {
   if (!isNaN(n)) el.value = fmt(n, r.indexOf('.') >= 0 ? 2 : 0);
 };
 
-// 物量欄専用：半角数字・小数点のみ許可、入力中は整形しない
+// 物量欄専用：半角数字・小数点のみ許可
 window.volInput = function(el) {
-  // 全角数字→半角、それ以外の文字を除去（数字と小数点のみ残す）
+  var pos = el.selectionStart;
   var v = el.value
     .replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
-    .replace(/[^0-9.]/g, '')
-    .replace(/^(\d*\.?\d*).*$/, '$1'); // 小数点は最初の1つだけ
-  if (el.value !== v) el.value = v;
+    .replace(/[^0-9.]/g, '');
+  // 小数点は最初の1つだけ
+  var parts = v.split('.');
+  if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+  if (el.value !== v) { el.value = v; try { el.setSelectionRange(pos, pos); } catch(e){} }
 };
-
-// フォーカス時に全選択（0のまま即上書き可能）
-window.volFocus = function(el) {
-  el.select();
-};
+// フォーカス時に全選択→そのままキー入力で上書き可能
+window.volFocus = function(el) { setTimeout(function(){ el.select(); }, 0); };
 
 function toast(msg, type) {
   var t = $('toast');
@@ -578,7 +577,7 @@ window.addRow = function(d) {
 
   tr.innerHTML =
     '<td><select class="ri ri-sel row-cust-sel" onchange="onRowCust(' + id + ',this)">' + custOpts + '</select></td>' +
-    '<td><input class="ri ri-sm" id="rb-vol-' + id + '" type="text" inputmode="decimal" value="' + (nv(d.vol || 0)) + '" oninput="volInput(this);onVolChange(' + id + ')" onfocus="volFocus(this)" style="text-align:right;min-width:52px"></td>' +
+    '<td><input class="ri ri-sm" id="rb-vol-' + id + '" type="text" inputmode="decimal" value="' + nv(d.vol || 0) + '" oninput="volInput(this);onVolChange(' + id + ')" onfocus="volFocus(this)" style="text-align:right"></td>' +
     '<td><select class="ri ri-dest" id="rb-dest-' + id + '" onchange="onDestChange(' + id + ')">' + destOpts + '</select><div id="rb-ts-disp-' + id + '" style="font-size:9px;color:var(--purple);margin-top:1px"></div></td>' +
     '<td><input class="ri ri-sm" id="rb-of-' + id + '" type="text" value="' + rv('of_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-lss-' + id + '" type="text" value="' + rv('lss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
@@ -1884,7 +1883,7 @@ window.wizAddRow = function(d) {
 
   tr.innerHTML=
     '<td><select class="ri ri-sel wiz-cust-sel" onchange="onWizRowCust('+id+',this)" style="min-width:100px">'+custOpts+'</select></td>'+
-    '<td><input class="ri ri-sm" id="wr-vol-'+id+'" type="text" inputmode="decimal" value="'+(nv(d.vol)||0)+'" oninput="volInput(this);wizUpdateVolSummary()" onfocus="volFocus(this)" style="text-align:right;min-width:52px"></td>'+
+    '<td><input class="ri ri-sm" id="wr-vol-'+id+'" type="text" inputmode="decimal" value="'+(nv(d.vol)||0)+'" oninput="volInput(this);wizUpdateVolSummary()" onfocus="volFocus(this)" style="text-align:right"></td>'+
     '<td><select class="ri ri-dest" id="wr-dest-'+id+'" onchange="onWizDestChange('+id+')" style="min-width:80px">'+destOpts+'</select><div id="wr-ts-disp-'+id+'" style="font-size:9px;color:var(--purple)"></div></td>'+
     '<td><select class="ri" id="wr-base-'+id+'" onchange="onWizBaseChange('+id+',this)" style="'+baseStyle+'">'+baseOptHtml+'</select></td>'+
     '<td><input class="ri ri-sm" id="wr-of-'+id+'"  type="text" value="'+rv('of')+'"  oninput="this.classList.add(\"edited\")"></td>'+
