@@ -113,7 +113,6 @@ window.volInput = function(el) {
   if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
   if (el.value !== v) { el.value = v; try { el.setSelectionRange(pos, pos); } catch(e){} }
 };
-// フォーカス時に全選択（0のままでもキーを打てば即上書き）
 window.volFocus = function(el) { setTimeout(function(){ el.select(); }, 0); };
 
 function toast(msg, type) {
@@ -1499,12 +1498,14 @@ function getSimRowsForWizard() {
     if (dest !== 'RTM') tsRates.forEach(function(t) { if (t.destination === dest) tsRate = t; });
     var tsApply = document.getElementById('rb-tschk-' + id) ? document.getElementById('rb-tschk-' + id).checked : false;
     var autoBase = custObj ? baseInfo(custObj.origin).simBase : '東京';
+    var isNomination = !!(custObj && custObj.is_nomination);
     rows.push({
       custId: custId, custName: custName,
       vol: g('vol'), base: autoBase,
-      slot: 'AB',        // シミュレーション→ウィザード転写時はデフォルトで両スロット対象
+      slot: 'AB',
       isCoload: false,
       isOlt:    false,
+      isNomination: isNomination,
       dest: dest, tsRate: tsRate, tsApply: tsApply,
       of: g('of'), lss: g('lss'), pss: g('pss'), efs: g('efs'), ics: g('ics'),
       cfs: g('cfs'), thc: g('thc'), drs: g('drs'), bl: g('bl'), ts: g('ts')
@@ -1702,8 +1703,8 @@ function wizRenderSlotCarriers(sl, type, saved) {
     html = selHtml('t', '東京 船社', 'var(--blue)', 'var(--blue-brd)', defCT) +
            selHtml('k', '神戸 船社', 'var(--red)',  'var(--red-brd)',  defCK);
   } else if (type === 'COLOAD') {
-    var defCL = saved.clId || ($('sim-coload-id') ? $('sim-coload-id').value : '');
-    var defCT2 = saved.cT  || ($('sim-carrier-t') ? $('sim-carrier-t').value : '');
+    var defCL  = saved.clId || ($('sim-coload-id') ? $('sim-coload-id').value : '');
+    var defCT2 = saved.cT   || ($('sim-carrier-t') ? $('sim-carrier-t').value : '');
     html = clSelHtml(defCL) +
            selHtml('t', '東京 船社', 'var(--blue)', 'var(--blue-brd)', defCT2);
   } else if (type === 'OLT') {
@@ -1831,6 +1832,17 @@ window.wizAutoFill = function() {
       var aT = allocate(combM, getCap40('wiz-c-t-'+sl));
       if(t20El) t20El.value=aT.n20; if(t40El) t40El.value=aT.n40;
       if(k20El) k20El.value=0;      if(k40El) k40El.value=0;
+      // OLT入出庫料：神戸物量 × 単価 を自動計算してウィザード共通設定に反映
+      var handlingRate = nv($('wiz-olt-handling') ? $('wiz-olt-handling').value :
+                           ($('olt-handling') ? $('olt-handling').value : '1800'));
+      var handlingTotal = Math.round(kM * handlingRate);
+      if ($('wiz-olt-handling')) {
+        // 単価はそのまま、合計をツールチップ的にolt-truckに反映（OLT入出庫料小計）
+        // wiz-olt-truck は別途手入力 or シム画面チェック済みトラック費を引き継ぐ
+        // 入出庫料合計を表示するためのバッジを更新
+        var dispEl = $('wiz-olt-handling-disp');
+        if (dispEl) dispEl.textContent = '神戸 '+fmt(kM,1)+'m³ × ¥'+fmt(handlingRate)+' = ¥'+fmt(handlingTotal);
+      }
     } else {
       // TK型：東京コンテナ ＋ 神戸コンテナ独立
       var aT = allocate(tM, getCap40('wiz-c-t-'+sl));
@@ -1963,12 +1975,16 @@ function wizGetCurrentRows() {
     var custName='（未選択）'; customers.forEach(function(c){if(c.id===custId)custName=c.name;});
     var dest=$('wr-dest-'+id)?$('wr-dest-'+id).value:'RTM';
     var tsRate=null; if(dest!=='RTM')tsRates.forEach(function(t){if(t.destination===dest)tsRate=t;});
+    var custObj = null;
+    customers.forEach(function(c){ if(c.id===custId) custObj=c; });
+    var isNomination = !!(custObj && custObj.is_nomination);
     var baseVal = $('wr-base-'+id)?$('wr-base-'+id).value:'東京';
     // CO-LOAD/OLTが残存していた場合は東京にフォールバック
     if(baseVal==='CO-LOAD'||baseVal==='OLT') baseVal='東京';
     rows.push({
       custId:custId, custName:custName,
       vol:g('vol'), base:baseVal,
+      isNomination: isNomination,
       dest:dest, tsRate:tsRate,
       tsApply:$('wr-tschk-'+id)?$('wr-tschk-'+id).checked:false,
       of:g('of'),lss:g('lss'),pss:g('pss'),efs:g('efs'),ics:g('ics'),
@@ -2084,7 +2100,7 @@ function wizCalcSlot(slotData, rows, fx, st) {
     return s + (t > 0 ? Math.max(raw, nv(r.tsRate.ts_min)) : raw) * fx;
   }, 0);
 
-  // ── AGENTコスト（シミュレーション画面の選択を引き継ぐ） ──
+  // ── AGENTコスト ──
   var agentName = st.agentName || (selAgent ? selAgent.name : '');
   var agentRatesForWiz = agentName
     ? agentRates.filter(function(r){ return r.agent_name === agentName; }) : [];
@@ -2141,7 +2157,6 @@ function wizCalcSlot(slotData, rows, fx, st) {
   function calcRef(targetM3, totalForRef, C) {
     return calcRefDetail(targetM3, totalForRef, C).refund;
   }
-  // REFUND計算詳細をbdItemsに追加
   function pushRefundDetail(det) {
     if (!det) return;
     bdItems.push(bdRow('💰 REFUND計算詳細（'+det.label+'）', 0, 'var(--green)'));
@@ -2181,7 +2196,6 @@ function wizCalcSlot(slotData, rows, fx, st) {
     var rdK = calcRefDetail(kM, kM, sK20||sK40, '神戸');
     refund = rdT.refund + rdK.refund;
 
-    // コンテナ明細出力ヘルパー
     function pushCntrRows(prefix, n, size, carrier, m3, d, isKobe) {
       if (n <= 0) return;
       var col = isKobe ? 'var(--red)' : 'var(--blue)';
@@ -2274,7 +2288,7 @@ function wizCalcSlot(slotData, rows, fx, st) {
     if (cT20n===0 && cT40n===0) bdItems.push(bdRow('⚠️ 東京コンテナ本数0 → 自動計算ボタンで設定', 0, 'var(--red)'));
     if (kM > 0) {
       if (oltTruck > 0) bdItems.push(bdRow('🚛 OLTトラック費（神戸→東京）', oltTruck, 'var(--acc)'));
-      bdItems.push(bdRow('　└ OLT入出庫料（'+fmt(kM,1)+'m³×¥'+fmt(oltHandling)+'/m³）', oltHandlingCost, 'var(--acc)'));
+      bdItems.push(bdRow('　└ OLT入出庫料（'+fmt(kM,1)+'m³×¥'+fmt(oltHandling)+'/m³ = ¥'+fmt(oltHandlingCost)+'）', oltHandlingCost, 'var(--acc)'));
     } else {
       bdItems.push(bdRow('ℹ️ 神戸荷主なし（OLT費用 = 0）', 0, 'var(--tx3)'));
     }
