@@ -488,13 +488,14 @@ function rowTsCost(r, fx) {
   return raw * fx; // 割引
 }
 
-// ── REFUND（コンテナタイプ別・T/S物量を除外） ─────────────────
-// m3: 対象物量, tsM3: T/S物量（比例按分で除外）, C: cost_master行, fx: 為替
-function calcRefundForCntr(m3, tsM3Total, totalM3, C, fx) {
+// ── REFUND（コンテナタイプ別・T/S物量・NOMINATION物量を除外） ─────────────────
+// m3: 対象物量, tsM3: T/S物量, nomM3: NOMINATION物量（比例按分で除外）, C: cost_master行, fx: 為替
+function calcRefundForCntr(m3, tsM3Total, totalM3, C, fx, nomM3Total) {
   if (!C || m3 <= 0) return 0;
-  // T/S物量を全体比率で按分除外
-  var tsExclude = totalM3 > 0 ? tsM3Total * (m3 / totalM3) : 0;
-  var refM3 = Math.max(0, m3 - tsExclude);
+  // T/S物量・NOMINATION物量を全体比率で按分除外
+  var tsExclude  = totalM3 > 0 ? tsM3Total  * (m3 / totalM3) : 0;
+  var nomExclude = totalM3 > 0 ? (nomM3Total||0) * (m3 / totalM3) : 0;
+  var refM3 = Math.max(0, m3 - tsExclude - nomExclude);
   return refM3 * nv(C.refund_per_rt) * fx;
 }
 
@@ -562,7 +563,7 @@ window.addRow = function(d) {
 
   tr.innerHTML =
     '<td><select class="ri ri-sel row-cust-sel" onchange="onRowCust(' + id + ',this)">' + custOpts + '</select></td>' +
-    '<td><input class="ri ri-sm" id="rb-vol-' + id + '" type="text" value="' + rv('vol', 10) + '" oninput="fmtI(this);onVolChange(' + id + ')"></td>' +
+    '<td><input class="ri ri-sm" id="rb-vol-' + id + '" type="number" inputmode="decimal" min="0" step="0.1" value="' + nv(d.vol || 10) + '" oninput="onVolChange(' + id + ')" style="text-align:right"></td>' +
     '<td><select class="ri ri-dest" id="rb-dest-' + id + '" onchange="onDestChange(' + id + ')">' + destOpts + '</select><div id="rb-ts-disp-' + id + '" style="font-size:9px;color:var(--purple);margin-top:1px"></div></td>' +
     '<td><input class="ri ri-sm" id="rb-of-' + id + '" type="text" value="' + rv('of_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
     '<td><input class="ri ri-sm" id="rb-lss-' + id + '" type="text" value="' + rv('lss_sell') + '" oninput="this.classList.add(\'edited\');calc()"></td>' +
@@ -628,7 +629,6 @@ window.onDestChange = function(id) {
 };
 
 window.onVolChange = function(id) {
-  fmtI($('rb-vol-' + id));
   calc();
 };
 
@@ -675,6 +675,7 @@ function getRows() {
     var custObj = null;
     if (custId) customers.forEach(function(c) { if (c.id === custId) custObj = c; });
     var autoBase = custObj ? baseInfo(custObj.origin).simBase : '東京';
+    var isNomination = !!(custObj && custObj.is_nomination);
     var baseA = autoBase;
     var baseB = autoBase;
     var useA = true; var useB = true;
@@ -689,6 +690,7 @@ function getRows() {
       ds: g('ds'), dc: g('dc'),
       nstkCost: g('nstku') * g('nstkq'), pltCost: g('pltu') * g('pltq'),
       ts: g('ts'), tsApply: tsApply, dest: dest, tsRate: tsRate,
+      isNomination: isNomination,
       useA: useA, useB: useB
     });
   });
@@ -717,7 +719,8 @@ window.calc = function() {
   var kM = kRows.reduce(function(s,r){return s+r.vol;},0);
   var allM = tM + kM;
   var tsM  = rows.filter(function(r){return r.tsApply;}).reduce(function(s,r){return s+r.vol;},0);
-  var refM = Math.max(0, allM - tsM);
+  var nomM = rows.filter(function(r){return r.isNomination;}).reduce(function(s,r){return s+r.vol;},0);
+  var refM = Math.max(0, allM - tsM - nomM);
 
   // 物量サマリー表示
   var simVolEl = $('sim-vol-summary');
@@ -810,7 +813,7 @@ window.calc = function() {
     var cap20T=nv(selT20?selT20.cap_m3:0)||25, cap40T=nv(selT40?selT40.cap_m3:0)||50;
     var bM20P1=simT20>0&&(simT20+simT40>0)?allM*simT20*cap20T/(simT20*cap20T+simT40*cap40T||1):(simT40===0?allM:0);
     var bM40P1=simT40>0&&(simT20+simT40>0)?allM*simT40*cap40T/(simT20*cap20T+simT40*cap40T||1):(simT20===0?allM:0);
-    refP1=calcRefundForCntr(bM20P1,tsM,allM,selT20,fx)+calcRefundForCntr(bM40P1,tsM,allM,selT40,fx);
+    refP1=calcRefundForCntr(bM20P1,tsM,allM,selT20,fx,nomM)+calcRefundForCntr(bM40P1,tsM,allM,selT40,fx,nomM);
   }
   var costP1 = cntrCostP1 + totalTs + agentCost;
   var profP1 = totalRev - costP1 + refP1;
@@ -828,7 +831,7 @@ window.calc = function() {
     var cap20T=nv(selT20?selT20.cap_m3:0)||25, cap40T=nv(selT40?selT40.cap_m3:0)||50;
     var bM20P2=simT20>0&&(simT20+simT40>0)?tM*simT20*cap20T/(simT20*cap20T+simT40*cap40T||1):(simT40===0?tM:0);
     var bM40P2=simT40>0&&(simT20+simT40>0)?tM*simT40*cap40T/(simT20*cap20T+simT40*cap40T||1):(simT20===0?tM:0);
-    refP2=calcRefundForCntr(bM20P2,tsM,tM,selT20,fx)+calcRefundForCntr(bM40P2,tsM,tM,selT40,fx);
+    refP2=calcRefundForCntr(bM20P2,tsM,tM,selT20,fx,nomM)+calcRefundForCntr(bM40P2,tsM,tM,selT40,fx,nomM);
   }
   var costP2 = cntrCostP2 + totalTs + agentCost;
   var profP2 = totalRev - costP2 + refP2;
@@ -846,13 +849,13 @@ window.calc = function() {
     var c20T=nv(selT20?selT20.cap_m3:0)||25, c40T=nv(selT40?selT40.cap_m3:0)||50;
     var bM20T=simT20>0&&(simT20+simT40>0)?tM*simT20*c20T/(simT20*c20T+simT40*c40T||1):(simT40===0?tM:0);
     var bM40T=simT40>0&&(simT20+simT40>0)?tM*simT40*c40T/(simT20*c20T+simT40*c40T||1):(simT20===0?tM:0);
-    refP3+=calcRefundForCntr(bM20T,tsM,allM,selT20,fx)+calcRefundForCntr(bM40T,tsM,allM,selT40,fx);
+    refP3+=calcRefundForCntr(bM20T,tsM,allM,selT20,fx,nomM)+calcRefundForCntr(bM40T,tsM,allM,selT40,fx,nomM);
   }
   if (selK20||selK40) {
     var c20K=nv(selK20?selK20.cap_m3:0)||25, c40K=nv(selK40?selK40.cap_m3:0)||50;
     var bM20K=simK20>0&&(simK20+simK40>0)?kM*simK20*c20K/(simK20*c20K+simK40*c40K||1):(simK40===0?kM:0);
     var bM40K=simK40>0&&(simK20+simK40>0)?kM*simK40*c40K/(simK20*c20K+simK40*c40K||1):(simK20===0?kM:0);
-    refP3+=calcRefundForCntr(bM20K,tsM,allM,selK20,fx)+calcRefundForCntr(bM40K,tsM,allM,selK40,fx);
+    refP3+=calcRefundForCntr(bM20K,tsM,allM,selK20,fx,nomM)+calcRefundForCntr(bM40K,tsM,allM,selK40,fx,nomM);
   }
   var costP3 = cntrCostP3 + totalTs + agentCost;
   var profP3 = totalRev - costP3 + refP3;
@@ -905,11 +908,15 @@ function renderCustTable() {
     var destBadge = dest === 'RTM'
       ? '<span style="font-size:10px;background:var(--sur2);color:var(--tx2);padding:1px 6px;border-radius:3px">RTM</span>'
       : '<span style="font-size:10px;background:var(--purple-bg);color:var(--purple);padding:1px 6px;border-radius:3px">' + dest + (tsRate ? ' $' + tsRate.ts_tariff + '/m³' : '') + '</span>';
+    var nomBadge = c.is_nomination
+      ? '<span style="font-size:10px;background:var(--amber-bg);color:var(--amber);padding:1px 5px;border-radius:3px;font-weight:700">NOM</span>'
+      : '<span style="font-size:10px;color:var(--tx3)">-</span>';
     return '<tr><td><strong>' + c.name + '</strong></td><td><span class="tag ' + bi.tagCls + '">' + bi.label + '</span></td><td>' + destBadge + '</td>' +
       '<td>' + fmt(c.of_sell,2) + '</td><td>' + fmt(c.lss_sell,2) + '</td><td>' + fmt(c.pss_sell,2) + '</td><td>' + fmt(c.efs_sell,2) + '</td><td>' + fmt(c.ts_sell,2) + '</td><td>' + fmt(c.ics_sell,2) + '</td>' +
       '<td>' + fmt(c.cfs_sell) + '</td><td>' + fmt(c.thc_sell) + '</td><td>' + fmt(c.drs_sell) + '</td>' +
       '<td>' + fmt(c.bl_fee_sell) + '</td><td>' + fmt(c.customs_declaration_jpy) + '</td><td>' + fmt(c.customs_handling_jpy) + '</td><td>' + fmt(c.other_fee) + '</td>' +
       '<td>$' + fmt(c.oversea_sell,2) + '</td><td>$' + fmt(c.oversea_cost,2) + '</td>' +
+      '<td style="text-align:center">' + nomBadge + '</td>' +
       '<td style="white-space:nowrap"><button class="btn btn-sm" style="margin-right:4px" onclick="editCust(\'' + c.id + '\')">編集</button><button class="delbtn" onclick="delCust(\'' + c.id + '\')">削除</button></td></tr>';
   }).join('');
 }
@@ -945,6 +952,8 @@ window.openCM = function(c) {
     ['cm-chand', c && c.customs_handling_jpy], ['cm-other', c && c.other_fee],
     ['cm-del-sell', c && c.oversea_sell], ['cm-del-cost', c && c.oversea_cost]];
   fields.forEach(function(f) { var el = $(f[0]); if (!el) return; var n = nv(f[1]); el.value = fmt(n, n % 1 !== 0 ? 2 : 0); });
+  var nomChk = $('cm-nomination');
+  if (nomChk) nomChk.checked = !!(c && c.is_nomination);
   $('cm-modal').style.display = 'block';
 };
 window.closeCM = function() { $('cm-modal').style.display = 'none'; };
@@ -959,6 +968,7 @@ window.saveCust = async function() {
     cfs_sell: g('cm-cfs'), thc_sell: g('cm-thc'), drs_sell: g('cm-drs'),
     bl_fee_sell: g('cm-bl'), customs_declaration_jpy: g('cm-decl'), customs_handling_jpy: g('cm-chand'),
     other_fee: g('cm-other'), oversea_sell: g('cm-del-sell'), oversea_cost: g('cm-del-cost'),
+    is_nomination: !!($('cm-nomination') && $('cm-nomination').checked),
     updated_at: new Date().toISOString() };
   var id = $('cm-id').value;
   var r = id ? await sbUpdate('customers', id, row) : await sbInsert('customers', row);
@@ -1859,7 +1869,7 @@ window.wizAddRow = function(d) {
 
   tr.innerHTML=
     '<td><select class="ri ri-sel wiz-cust-sel" onchange="onWizRowCust('+id+',this)" style="min-width:100px">'+custOpts+'</select></td>'+
-    '<td><input class="ri ri-sm" id="wr-vol-'+id+'" type="text" value="'+rv('vol',10)+'" oninput="fmtI(this);wizUpdateVolSummary()"></td>'+
+    '<td><input class="ri ri-sm" id="wr-vol-'+id+'" type="number" inputmode="decimal" min="0" step="0.1" value="'+(nv(d.vol)||10)+'" oninput="wizUpdateVolSummary()" style="text-align:right"></td>'+
     '<td><select class="ri ri-dest" id="wr-dest-'+id+'" onchange="onWizDestChange('+id+')" style="min-width:80px">'+destOpts+'</select><div id="wr-ts-disp-'+id+'" style="font-size:9px;color:var(--purple)"></div></td>'+
     '<td><select class="ri" id="wr-base-'+id+'" onchange="onWizBaseChange('+id+',this)" style="'+baseStyle+'">'+baseOptHtml+'</select></td>'+
     '<td><input class="ri ri-sm" id="wr-of-'+id+'"  type="text" value="'+rv('of')+'"  oninput="this.classList.add(\"edited\")"></td>'+
@@ -2029,7 +2039,8 @@ function wizCalcSlot(slotData, rows, fx, st) {
   // OLT型では神戸行を東京コンテナに合流 → 東京コンテナ搭載物量 = tM+kM
   var tCombM = (type === 'OLT') ? tM + kM : tM;
 
-  var tsM = rows.filter(function(r){ return r.tsApply; }).reduce(function(s,r){ return s+r.vol; }, 0);
+  var tsM  = rows.filter(function(r){ return r.tsApply; }).reduce(function(s,r){ return s+r.vol; }, 0);
+  var nomM = rows.filter(function(r){ return r.isNomination; }).reduce(function(s,r){ return s+r.vol; }, 0);
 
   // ── 売上（全行共通） ──
   var totalRev = rows.reduce(function(s,r){
@@ -2071,11 +2082,12 @@ function wizCalcSlot(slotData, rows, fx, st) {
     };
   }
 
-  // REFUND計算（CO-LOAD型では神戸物量はREFUND対象外）
+  // REFUND計算（CO-LOAD型では神戸物量はREFUND対象外、T/S・NOMINATION物量も除外）
   function calcRef(targetM3, totalForRef, C) {
     if (!C || targetM3 <= 0) return 0;
-    var tsExclude = totalForRef > 0 ? tsM * (targetM3 / totalForRef) : 0;
-    return Math.max(0, targetM3 - tsExclude) * nv(C.refund_per_rt) * fx;
+    var tsExclude  = totalForRef > 0 ? tsM  * (targetM3 / totalForRef) : 0;
+    var nomExclude = totalForRef > 0 ? nomM * (targetM3 / totalForRef) : 0;
+    return Math.max(0, targetM3 - tsExclude - nomExclude) * nv(C.refund_per_rt) * fx;
   }
 
   function bdRow(label, jpy, color) { return { label: label, jpy: jpy, color: color || '' }; }
@@ -2088,6 +2100,7 @@ function wizCalcSlot(slotData, rows, fx, st) {
   var cK40n = cntr['wiz-ck40-'+sl] || 0;
 
   var cntrCostTotal = 0, oltCostTotal = 0, clCostTotal = 0, refund = 0;
+  var cntrCostTokyo = 0, cntrCostKobe = 0; // 個別コスト追跡用
   var bdItems = [];
   var cT = slotData.cT || '未選択';
   var cK = slotData.cK || '未選択';
@@ -2101,7 +2114,9 @@ function wizCalcSlot(slotData, rows, fx, st) {
     var sK20=selByCarrier(cK,false), sK40=selByCarrier(cK,true);
     var dT20=calcCntrDetail(cT20n,tM,sT20,false), dT40=calcCntrDetail(cT40n,tM,sT40,false);
     var dK20=calcCntrDetail(cK20n,kM,sK20,true),  dK40=calcCntrDetail(cK40n,kM,sK40,true);
-    cntrCostTotal = dT20.total+dT40.total+dK20.total+dK40.total;
+    cntrCostTokyo = dT20.total+dT40.total;
+    cntrCostKobe  = dK20.total+dK40.total;
+    cntrCostTotal = cntrCostTokyo + cntrCostKobe;
     refund = calcRef(tM, tM, sT20||sT40) + calcRef(kM, kM, sK20||sK40);
 
     if (tM > 0) {
@@ -2151,7 +2166,8 @@ function wizCalcSlot(slotData, rows, fx, st) {
     var clDom = kM * (cfsJ + thcJ + drsJ);
     var clIcs = kRows.length * ics2U * fx;
     clCostTotal = clOf + clDom + clIcs;
-    cntrCostTotal = dT20.total + dT40.total + clCostTotal;
+    cntrCostTokyo = dT20.total + dT40.total;
+    cntrCostTotal = cntrCostTokyo + clCostTotal;
 
     if (tM > 0) {
       if (cT20n > 0) {
@@ -2186,7 +2202,8 @@ function wizCalcSlot(slotData, rows, fx, st) {
     var dT20=calcCntrDetail(cT20n,tCombM,sT20,false), dT40=calcCntrDetail(cT40n,tCombM,sT40,false);
     var oltHandlingCost = kM * oltHandling;
     oltCostTotal = oltTruck + oltHandlingCost;
-    cntrCostTotal = dT20.total + dT40.total + oltCostTotal;
+    cntrCostTokyo = dT20.total + dT40.total;
+    cntrCostTotal = cntrCostTokyo + oltCostTotal;
     refund = calcRef(tCombM, tCombM, sT20||sT40);
 
     if (cT20n > 0) {
@@ -2218,8 +2235,9 @@ function wizCalcSlot(slotData, rows, fx, st) {
   return {
     name: slotData.name, type: type,
     totalRev: totalRev, cost: cost, prof: prof,
-    cntrCost: cntrCostTotal, totalTs: totalTs,
-    oltCost: oltCostTotal, clCost: clCostTotal, refund: refund,
+    cntrCost: cntrCostTotal, cntrCostTokyo: cntrCostTokyo, cntrCostKobe: cntrCostKobe,
+    oltCost: oltCostTotal, clCost: clCostTotal, totalTs: totalTs,
+    refund: refund,
     bdItems: bdItems,
     tM: tM, kM: kM, allM: tM+kM, rows: rows
   };
@@ -2381,7 +2399,18 @@ function wizRenderResult() {
   bodyHtml += simRow('神戸 m³', function(r){return r.kM;});
   bodyHtml += simRow('合計 m³', function(r){return r.allM;});
   bodyHtml += secRow('コスト内訳');
-  bodyHtml += simRow('コンテナ/CO-LOAD/OLTコスト', function(r){return r.cntrCost;});
+  // 東京コンテナコスト（全タイプ共通で存在する可能性あり）
+  var hasTkyo = validSlots.some(function(r){return r.cntrCostTokyo>0;});
+  if(hasTkyo) bodyHtml += simRow('🚢 東京コンテナコスト', function(r){return r.cntrCostTokyo||0;});
+  // 神戸コンテナコスト（TKタイプのみ）
+  var hasKobe = validSlots.some(function(r){return r.type==='TK' && r.cntrCostKobe>0;});
+  if(hasKobe) bodyHtml += simRow('🚢 神戸コンテナコスト', function(r){return (r.type==='TK'?r.cntrCostKobe:0)||0;});
+  // CO-LOADコスト（COLOADタイプのみ）
+  var hasCl = validSlots.some(function(r){return r.clCost>0;});
+  if(hasCl) bodyHtml += simRow('📦 CO-LOADコスト（神戸）', function(r){return r.clCost||0;});
+  // OLTコスト（OLTタイプのみ）
+  var hasOlt = validSlots.some(function(r){return r.oltCost>0;});
+  if(hasOlt) bodyHtml += simRow('🚛 OLTコスト（神戸→東京）', function(r){return r.oltCost||0;});
   var hasTs = validSlots.some(function(r){return r.totalTs!==0;});
   if(hasTs) bodyHtml += simRow('T/Sコスト（買値）', function(r){return r.totalTs||0;});
   var hasRef = validSlots.some(function(r){return r.refund>0;});
